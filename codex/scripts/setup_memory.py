@@ -11,7 +11,77 @@ from uuid import uuid4
 MEMORY_FOLDER = 'project-memory'
 MARKER = '<!-- shared-project-memory -->'
 # Personal copies, setup backups and machine state stay out of Git even when project-memory/ is committed.
-GITIGNORE = '# shared-project-memory: local-only files\narchive/\n.setup-complete.json\n'
+GITIGNORE_HEADER = '# shared-project-memory: local-only files\n'
+GITIGNORE_RULES = ('archive/', '.setup-complete.json')
+LOCAL_ONLY_PATHS = ('project-memory/archive', 'project-memory/.setup-complete.json')
+
+
+def user_config_root():
+    return Path(os.environ.get('CLAUDE_CONFIG_DIR', str(Path.home() / '.claude'))).expanduser()
+
+
+def effective_auto_memory(root):
+    """Return (value, source) of the effective Claude autoMemoryDirectory across user/project/local/managed files."""
+    scope_paths = [user_config_root() / 'settings.json', root / '.claude/settings.json', root / '.claude/settings.local.json']
+    if os.name == 'nt':
+        scope_paths.append(Path(os.environ.get('ProgramFiles', 'C:/Program Files')) / 'ClaudeCode/managed-settings.json')
+    else:
+        scope_paths.append(Path('/etc/claude-code/managed-settings.json'))
+    configured = None
+    configured_source = None
+    for scope_path in scope_paths:
+        if scope_path.is_file():
+            scope = json.loads(scope_path.read_text(encoding='utf-8-sig'))
+            if scope.get('autoMemoryDirectory'):
+                configured = scope['autoMemoryDirectory']
+                configured_source = str(scope_path)
+    return configured, configured_source
+
+
+def native_memory_linked(root):
+    """True only when Claude's effective auto memory already points at this project's shared memory."""
+    root = Path(root).resolve()
+    try:
+        configured, _ = effective_auto_memory(root)
+    except (OSError, ValueError):
+        return False
+    return bool(configured) and Path(configured).expanduser().resolve() == (root / MEMORY_FOLDER).resolve()
+
+
+def gitignore_content(path):
+    """Existing .gitignore with any missing local-only rules appended; None when nothing is missing."""
+    original = path.read_text(encoding='utf-8-sig') if path.exists() else ''
+    present = {line.strip() for line in original.splitlines()}
+    missing = [rule for rule in GITIGNORE_RULES if rule not in present and '/' + rule not in present]
+    if not missing:
+        return None
+    prefix = original if not original or original.endswith('\n') else original + '\n'
+    return (prefix + GITIGNORE_HEADER + ''.join(rule + '\n' for rule in missing)).encode('utf-8')
+
+
+def git_exposure(root):
+    """Ask Git itself whether local-only memory files are ignored and whether any are already tracked."""
+    probe = subprocess.run(['git', '-C', str(root), 'rev-parse', '--is-inside-work-tree'], capture_output=True, text=True)
+    if probe.returncode:
+        return {'git': False, 'local_files_ignored': None, 'tracked_local_files': []}
+    ignored = all(
+        subprocess.run(['git', '-C', str(root), 'check-ignore', '-q', '--no-index', target], capture_output=True).returncode == 0
+        for target in ('project-memory/archive/.probe', 'project-memory/.setup-complete.json')
+    )
+    tracked = subprocess.run(['git', '-C', str(root), 'ls-files', '-z', '--', *LOCAL_ONLY_PATHS], capture_output=True, text=True)
+    if tracked.returncode:
+        raise RuntimeError(tracked.stderr.strip() or 'Cannot list tracked project-memory files')
+    return {'git': True, 'local_files_ignored': ignored, 'tracked_local_files': [name for name in tracked.stdout.split('\0') if name]}
+
+
+def write_private(path, content, private_root):
+    """Write a new file readable only by the current user (0600 in a 0700 folder on POSIX)."""
+    private_root.parent.mkdir(parents=True, exist_ok=True)
+    private_root.mkdir(mode=0o700, exist_ok=True)
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, 'O_BINARY', 0), 0o600)
+    with os.fdopen(descriptor, 'wb') as file:
+        file.write(content)
 
 def validate_project_rules(root):
     prohibition = r"(?i)\b(?:never|do not|don't|must not|forbidden|prohibited)\b.*\b(?:modify|edit|write|create|change|overwrite)\b"
@@ -59,20 +129,8 @@ def initialize(root, apply=False, approve_main=False):
     settings_path = root / '.claude/settings.local.json'
     settings_bytes = settings_path.read_bytes() if settings_path.exists() else None
     settings = json.loads(settings_bytes.decode('utf-8-sig')) if settings_bytes is not None else {}
-    config_root = Path(os.environ.get('CLAUDE_CONFIG_DIR', str(Path.home() / '.claude'))).expanduser()
-    scope_paths = [config_root / 'settings.json', root / '.claude/settings.json', settings_path]
-    if os.name == 'nt':
-        scope_paths.append(Path(os.environ.get('ProgramFiles', 'C:/Program Files')) / 'ClaudeCode/managed-settings.json')
-    else:
-        scope_paths.append(Path('/etc/claude-code/managed-settings.json'))
-    configured = None
-    configured_source = None
-    for scope_path in scope_paths:
-        if scope_path.is_file():
-            scope = json.loads(scope_path.read_text(encoding='utf-8-sig'))
-            if scope.get('autoMemoryDirectory'):
-                configured = scope['autoMemoryDirectory']
-                configured_source = str(scope_path)
+    config_root = user_config_root()
+    configured, configured_source = effective_auto_memory(root)
     if configured and Path(configured).expanduser().resolve() != memory.resolve():
         raise RuntimeError(f'A different effective autoMemoryDirectory exists in {configured_source}; preserve it and ask before redirecting')
     git = subprocess.run(['git', '-C', str(root), 'branch', '--show-current'], capture_output=True, text=True)
@@ -113,10 +171,12 @@ def initialize(root, apply=False, approve_main=False):
     desired = {
         memory / 'MEMORY.md': protocol.encode('utf-8'),
         memory / 'current.md': f'# 현재 상태 — {root.name}\n\n공유 기억 경로를 연결했습니다. 프로젝트의 진행 상태와 연구 결과는 아직 확인하지 않았습니다.\n새 작업에서 현재 파일/로그를 확인한 뒤 이 문서와 세션별 인계를 갱신합니다.\n'.encode('utf-8'),
-        memory / '.gitignore': GITIGNORE.encode('utf-8'),
         memory / 'decisions.md': '# 결정과 사용자 선호\n\n새 사용자 지시와 기존 프로젝트 규칙을 우선합니다. 확인된 선호와 결정만 출처/날짜와 함께 기록합니다.\n'.encode('utf-8'),
     }
     desired = {path: content for path, content in desired.items() if not path.exists()}
+    ignore_rules = gitignore_content(memory / '.gitignore')
+    if ignore_rules is not None:
+        desired[memory / '.gitignore'] = ignore_rules
     blocks = {
         root / 'AGENTS.md': f'''\n\n{MARKER}
 ## 공유 프로젝트 기억
@@ -165,11 +225,18 @@ def initialize(root, apply=False, approve_main=False):
     stamp = datetime.now().strftime('%Y%m%d-%H%M%S') + '-' + uuid4().hex[:8]
     backup = memory / 'archive' / ('setup-backup-' + stamp)
     local_backup = config_root / 'shared-project-memory/backups' / (root.name + '-' + stamp)
+    backs_up_local = any(before.get(path) is not None for path in local_only)
+    if backs_up_local and local_backup.resolve().is_relative_to(root):
+        raise RuntimeError(f'Local settings backup would land inside the project ({local_backup}); point CLAUDE_CONFIG_DIR outside it')
     if apply:
         if changed:
             for path, content in before.items():
-                if content is not None:
-                    copy = (local_backup if path in local_only else backup) / path.relative_to(root)
+                if content is None:
+                    continue
+                if path in local_only:
+                    write_private(local_backup / path.relative_to(root), content, local_backup)
+                else:
+                    copy = backup / path.relative_to(root)
                     copy.parent.mkdir(parents=True, exist_ok=True)
                     copy.write_bytes(content)
         for path, content in desired.items():
@@ -190,7 +257,7 @@ def initialize(root, apply=False, approve_main=False):
         completion = memory / '.setup-complete.json'
         if changed or not completion.exists():
             completion.write_text(json.dumps({'status': 'complete', 'version': 1}) + '\n', encoding='utf-8')
-    return {'project': str(root), 'branch': branch, 'applied': apply, 'changed': changed, 'shared_memory': str(memory), 'local_backup': str(local_backup) if apply and before.get(settings_path) is not None else None, 'native_memory_candidate_found': native.is_dir(), 'settings_check': 'user/project/local/managed files; live CLI or hosted policy overrides need host verification'}
+    return {'project': str(root), 'branch': branch, 'applied': apply, 'changed': changed, 'shared_memory': str(memory), 'local_backup': str(local_backup) if apply and backs_up_local else None, 'git_exposure': git_exposure(root), 'native_memory_candidate_found': native.is_dir(), 'settings_check': 'user/project/local/managed files; live CLI or hosted policy overrides need host verification'}
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Preview or initialize local Codex/Claude shared project memory. No network, inference calls, installs, commits or deletion.')

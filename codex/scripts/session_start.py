@@ -98,15 +98,23 @@ def build_context(event, host, auto_init=False, approve_main=False):
     memory = root / 'project-memory'
     initialized = False
     setup_skipped = None
+    exposure_warning = None
+    sys.dont_write_bytecode = True
+    if str(Path(__file__).parent) not in sys.path:
+        sys.path.insert(0, str(Path(__file__).parent))
+    from setup_memory import initialize, is_connected, native_memory_linked
     if auto_init:
-        sys.dont_write_bytecode = True
-        if str(Path(__file__).parent) not in sys.path:
-            sys.path.insert(0, str(Path(__file__).parent))
-        from setup_memory import initialize, is_connected
         try:
             if not is_connected(root):
                 result = initialize(root, apply=True, approve_main=approve_main)
                 initialized = bool(result['changed'])
+                exposure = result['git_exposure']
+                if exposure['git'] and (not exposure['local_files_ignored'] or exposure['tracked_local_files']):
+                    exposure_warning = (
+                        'SHARED_PROJECT_MEMORY_GIT_EXPOSURE: project-memory/archive or .setup-complete.json is not ignored by Git'
+                        + (' and already tracked: ' + ', '.join(exposure['tracked_local_files'][:5]) if exposure['tracked_local_files'] else '')
+                        + '. Tell the user; untracking or rotating secrets needs their decision.'
+                    )
         except (RuntimeError, ValueError) as error:
             # A refused setup must not hide memory that already exists (e.g. a fresh clone on main).
             if not memory.is_dir():
@@ -123,9 +131,12 @@ def build_context(event, host, auto_init=False, approve_main=False):
     )
     if setup_skipped:
         text += setup_skipped + '\nExisting memory was still loaded. Report this once; do not retry setup without the user.\n'
+    if exposure_warning:
+        text += exposure_warning + '\n'
     if initialized:
         text += 'SHARED_PROJECT_MEMORY_INITIALIZED: first-time project memory setup completed with the existing initializer.\n'
-    if host == 'codex' or initialized:
+    # Claude loads the index natively only once autoMemoryDirectory points here (absent on a fresh clone or refused setup).
+    if host == 'codex' or initialized or not native_memory_linked(root):
         text += excerpt(memory / 'MEMORY.md', memory, INDEX_CHARS)
     else:
         text += 'Claude uses its configured native auto-memory index; this hook does not duplicate that index.\n'
@@ -141,8 +152,9 @@ def build_context(event, host, auto_init=False, approve_main=False):
     if len(text) > MAX_CONTEXT_CHARS:
         text = text[:MAX_CONTEXT_CHARS - len(TRUNCATION)] + TRUNCATION
     output = {'hookSpecificOutput': {'hookEventName': 'SessionStart', 'additionalContext': text}}
-    if setup_skipped:
-        output['systemMessage'] = setup_skipped
+    warnings = [message for message in (setup_skipped, exposure_warning) if message]
+    if warnings:
+        output['systemMessage'] = '\n'.join(warnings)
     return output
 
 

@@ -1,0 +1,31 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ['3.11', '3.13']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      # Fixtures live in runner.temp: outside the checkout and outside TEMP/TMP, which auto-init excludes by design.
+      - name: Claude setup checks
+        run: python claude/scripts/test_setup.py --fixtures "${{ runner.temp }}/spm-fixtures"
+      - name: Claude plugin checks
+        run: python claude/scripts/test_plugin.py --package claude --fixtures "${{ runner.temp }}/spm-fixtures"
+      - name: Codex setup checks
+        run: python codex/scripts/test_setup.py --fixtures "${{ runner.temp }}/spm-fixtures"
+      - name: Codex plugin checks
+        run: python codex/scripts/test_plugin.py --package codex --fixtures "${{ runner.temp }}/spm-fixtures"

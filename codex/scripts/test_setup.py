@@ -35,7 +35,11 @@ assert settings['permissions']=={'allow':['Read']} and settings['custom_flag'] i
 assert Path(settings['autoMemoryDirectory']).resolve()==root/'project-memory'
 memory_files=[path for path in (root/'project-memory').rglob('*') if path.is_file()]
 assert not any(b'local-secret-marker' in path.read_bytes() for path in memory_files),'Local settings were copied into shared memory'
-assert any(b'local-secret-marker' in path.read_bytes() for path in (fixtures/'isolated-user-config/shared-project-memory/backups').rglob('settings.local.json')),'Local settings backup missing from user config'
+local_backups=list((fixtures/'isolated-user-config/shared-project-memory/backups').rglob('settings.local.json'))
+assert local_backups and b'local-secret-marker' in local_backups[0].read_bytes(),'Local settings backup missing from user config'
+if os.name!='nt':
+    assert local_backups[0].stat().st_mode&0o777==0o600,'Local settings backup is readable by other users'
+    assert local_backups[0].parent.parent.stat().st_mode&0o777==0o700,'Local backup folder is accessible to other users'
 ignored=(root/'project-memory/.gitignore').read_text(encoding='utf-8').splitlines()
 assert 'archive/' in ignored and '.setup-complete.json' in ignored,'Local-only memory files are not git-ignored'
 for shared in ('CLAUDE.md','AGENTS.md','project-memory/MEMORY.md','project-memory/current.md'):
@@ -127,4 +131,47 @@ except RuntimeError:
     assert not (prohibited/'project-memory').exists()
 else:
     raise AssertionError('Contradictory memory rule was ignored')
-print(json.dumps({'status':'passed','checks':['dry-run','preserve-instructions-and-permissions','idempotent','conflicting-path-no-mutation','invalid-json-no-mutation','main-approval-gate','outside-link-no-mutation','agents-rule-loading','project-scope-conflict','incidental-mention-adapter','user-scope-conflict','prohibited-guidance','local-backup-outside-project','local-only-gitignore','no-absolute-shared-paths'],'fixtures':str(fixtures)},ensure_ascii=False))
+def git(repo,*arguments):
+    return subprocess.run(['git','-C',str(repo),'-c','user.name=spm-test','-c','user.email=spm-test@example.invalid',*arguments],check=True,capture_output=True,text=True)
+os.environ['CLAUDE_CONFIG_DIR']=str(fixtures/'gitignore-user-config')
+existing=fixtures/'existing-gitignore'
+(existing/'project-memory').mkdir(parents=True)
+git(fixtures,'init','-q','-b','work',str(existing))
+(existing/'project-memory/.gitignore').write_text('notes.tmp',encoding='utf-8')
+result=module.initialize(existing,apply=True)
+lines=(existing/'project-memory/.gitignore').read_text(encoding='utf-8').splitlines()
+assert lines[0]=='notes.tmp' and 'archive/' in lines and '.setup-complete.json' in lines,'Existing .gitignore was replaced or not completed'
+assert result['git_exposure']=={'git':True,'local_files_ignored':True,'tracked_local_files':[]},result['git_exposure']
+git(existing,'check-ignore','-q','project-memory/archive/setup-backup-x/AGENTS.md')
+git(existing,'check-ignore','-q','project-memory/.setup-complete.json')
+git(existing,'add','-A')
+assert not [name for name in git(existing,'ls-files').stdout.splitlines() if name.startswith('project-memory/archive/') or name.endswith('.setup-complete.json')],'Local-only files were staged'
+assert module.initialize(existing,apply=True)['changed']==[],'Completed .gitignore changed on re-run'
+tracked=fixtures/'tracked-archive'
+(tracked/'project-memory/archive').mkdir(parents=True)
+git(fixtures,'init','-q','-b','work',str(tracked))
+(tracked/'project-memory/archive/old-backup.json').write_text('{}',encoding='utf-8')
+git(tracked,'add','-A')
+git(tracked,'commit','-q','-m','pre-existing tracked backup')
+exposure=module.initialize(tracked,apply=True)['git_exposure']
+assert exposure['local_files_ignored'] is True and exposure['tracked_local_files']==['project-memory/archive/old-backup.json'],exposure
+inside=fixtures/'config-inside-project'
+(inside/'.claude').mkdir(parents=True)
+(inside/'.claude/settings.local.json').write_text('{"env":{"SPM_TEST_TOKEN":"x"}}',encoding='utf-8')
+for label,config in (('direct',inside/'.claude-config'),('linked',fixtures/'linked-config')):
+    if label=='linked':
+        if sys.platform=='win32':
+            subprocess.run(['cmd','/c','mklink','/J',str(config),str(inside/'linked-target')],check=True,capture_output=True)
+        else:
+            (inside/'linked-target').mkdir()
+            config.symlink_to(inside/'linked-target',target_is_directory=True)
+    os.environ['CLAUDE_CONFIG_DIR']=str(config)
+    snapshot={str(path.relative_to(inside)):path.read_bytes() for path in inside.rglob('*') if path.is_file()}
+    try:
+        module.initialize(inside,apply=True)
+    except RuntimeError as error:
+        assert 'inside the project' in str(error),error
+        assert snapshot=={str(path.relative_to(inside)):path.read_bytes() for path in inside.rglob('*') if path.is_file()},f'{label}: files changed before refusal'
+    else:
+        raise AssertionError(f'{label}: local settings backup was allowed inside the project')
+print(json.dumps({'status':'passed','checks':['dry-run','preserve-instructions-and-permissions','idempotent','conflicting-path-no-mutation','invalid-json-no-mutation','main-approval-gate','outside-link-no-mutation','agents-rule-loading','project-scope-conflict','incidental-mention-adapter','user-scope-conflict','prohibited-guidance','local-backup-outside-project','local-only-gitignore','no-absolute-shared-paths','private-local-backup','existing-gitignore-completed','git-check-ignore-verified','tracked-local-file-reported','config-dir-inside-project-refused','linked-config-dir-refused'],'fixtures':str(fixtures)},ensure_ascii=False))
