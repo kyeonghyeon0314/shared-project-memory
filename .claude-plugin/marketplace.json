@@ -1,0 +1,12 @@
+{
+  "name": "shared-project-memory-local",
+  "owner": { "name": "Shared Project Memory" },
+  "description": "Marketplace for the Shared Project Memory Claude Code plugin.",
+  "plugins": [
+    {
+      "name": "shared-project-memory",
+      "source": "./claude",
+      "description": "Local project memory with bounded SessionStart loading and explicit setup consent."
+    }
+  ]
+}

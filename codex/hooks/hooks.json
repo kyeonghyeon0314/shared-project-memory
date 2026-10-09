@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/scripts/hook_entry.py\"",
+            "commandWindows": "& \"$env:PLUGIN_ROOT/scripts/session_start.ps1\"",
+            "timeout": 10,
+            "additionalContextLimit": 4000,
+            "statusMessage": "Loading shared project memory"
+          }
+        ]
+      }
+    ]
+  }
+}

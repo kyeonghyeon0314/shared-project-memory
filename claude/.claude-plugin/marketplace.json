@@ -1,0 +1,14 @@
+{
+  "name": "shared-project-memory-local",
+  "owner": {
+    "name": "shared-project-memory"
+  },
+  "description": "Local marketplace for the Shared Project Memory plugin.",
+  "plugins": [
+    {
+      "name": "shared-project-memory",
+      "source": "./",
+      "description": "Local project memory with bounded SessionStart loading and explicit setup consent."
+    }
+  ]
+}

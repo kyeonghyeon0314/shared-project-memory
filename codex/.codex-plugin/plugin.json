@@ -1,0 +1,14 @@
+{
+  "name": "shared-project-memory",
+  "version": "0.1.1",
+  "description": "Local project memory with bounded loading and explicit setup consent.",
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json",
+  "interface": {
+    "displayName": "Shared Project Memory",
+    "shortDescription": "Local project memory",
+    "longDescription": "Bounded local memory, explicit automatic setup consent, and user-selected helper models.",
+    "defaultPrompt": "Set up shared project memory for this local project."
+  },
+  "requires_local_executor": true
+}

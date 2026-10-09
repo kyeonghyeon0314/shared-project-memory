@@ -1,0 +1,31 @@
+{
+  "version": "0.1.1",
+  "date_kst": "2026-10-09",
+  "manifest_checks": [
+    "effective-root-hooks-preserved",
+    "local-executor-declared",
+    "version-interface-synchronized",
+    "hook-reference-contained",
+    "memory-runtime-unchanged"
+  ],
+  "plugin_checks": [
+    "default-startup-read-only",
+    "configuration-dry-run",
+    "explicit-user-opt-in",
+    "approved-init-and-settings-preserved",
+    "idempotent-startup",
+    "bounded-unicode-context-and-model-policy",
+    "disabled-init-still-loads-memory",
+    "invalid-preferences-visible",
+    "invalid-model-pair-visible",
+    "main-requires-separate-approval",
+    "approved-main-init",
+    "conflicting-memory-path-preserved",
+    "stricter-project-rule-preserved"
+  ],
+  "root_schema_required_keys_present": true,
+  "backend_upload_verified": false,
+  "ui_upload_error_root_cause_confirmed": false,
+  "claude_supported": false,
+  "installed": false
+}

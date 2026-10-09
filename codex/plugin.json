@@ -1,0 +1,18 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "shared-project-memory",
+  "version": "0.1.1",
+  "description": "Local project memory with bounded loading and explicit setup consent.",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Shared Project Memory",
+        "shortDescription": "Local project memory",
+        "longDescription": "Bounded local memory, explicit automatic setup consent, and user-selected helper models.",
+        "defaultPrompt": "Set up shared project memory for this local project."
+      },
+      "hooks": "./hooks/hooks.json",
+      "requires_local_executor": true
+    }
+  }
+}

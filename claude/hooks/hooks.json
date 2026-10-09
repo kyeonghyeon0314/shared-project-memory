@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/hook_entry.py"],
+            "timeout": 10,
+            "statusMessage": "Loading shared project memory"
+          }
+        ]
+      }
+    ]
+  }
+}

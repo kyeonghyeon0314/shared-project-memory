@@ -1,0 +1,15 @@
+{
+  "name": "shared-project-memory-local",
+  "interface": {
+    "displayName": "Shared Project Memory Local"
+  },
+  "plugins": [
+    {
+      "name": "shared-project-memory",
+      "source": {
+        "source": "local",
+        "path": "."
+      }
+    }
+  ]
+}

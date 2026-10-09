@@ -1,0 +1,42 @@
+{
+  "version": "0.1.1",
+  "host": "claude-code",
+  "date_kst": "2026-10-09",
+  "environment": "Windows 11, Claude Code 2.1.280, Python 3.14 via python3 alias",
+  "validator": ["claude plugin validate --strict (marketplace)", "claude plugin validate --strict (plugin.json)"],
+  "setup_checks": [
+    "dry-run",
+    "preserve-instructions-and-permissions",
+    "idempotent",
+    "conflicting-path-no-mutation",
+    "invalid-json-no-mutation",
+    "main-approval-gate",
+    "outside-link-no-mutation",
+    "agents-rule-loading",
+    "project-scope-conflict",
+    "incidental-mention-adapter",
+    "user-scope-conflict",
+    "prohibited-guidance"
+  ],
+  "plugin_checks": [
+    "exec-hook-and-agent-models-declared",
+    "default-startup-read-only",
+    "configuration-dry-run",
+    "explicit-user-opt-in",
+    "approved-init-and-settings-preserved",
+    "idempotent-startup",
+    "bounded-unicode-context-and-model-policy",
+    "disabled-init-still-loads-memory",
+    "invalid-preferences-visible",
+    "invalid-approve-main-visible",
+    "main-requires-separate-approval",
+    "approved-main-init",
+    "conflicting-memory-path-preserved",
+    "stricter-project-rule-preserved"
+  ],
+  "session_hook_check": "claude --plugin-dir <path with space and Korean> --init-only: SessionStart exec hook ran, SHARED_PROJECT_MEMORY_LOADED injected (project path with space and Korean)",
+  "known_limit": "Windows python3 App Execution Alias cannot see files under AppData\\Roaming (MSIX virtualization)",
+  "helper_model_runtime_verified": false,
+  "installed": false,
+  "other_os_verified": false
+}
