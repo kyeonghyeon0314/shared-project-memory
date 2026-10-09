@@ -3,7 +3,10 @@
   "host": "claude-code",
   "date_kst": "2026-10-09",
   "environment": "Windows 11, Claude Code 2.1.280, Python 3.14 via python3 alias",
-  "validator": ["claude plugin validate --strict (marketplace)", "claude plugin validate --strict (plugin.json)"],
+  "validator": [
+    "claude plugin validate --strict (marketplace)",
+    "claude plugin validate --strict (plugin.json)"
+  ],
   "setup_checks": [
     "dry-run",
     "preserve-instructions-and-permissions",
@@ -38,5 +41,66 @@
   "known_limit": "Windows python3 App Execution Alias cannot see files under AppData\\Roaming (MSIX virtualization)",
   "helper_model_runtime_verified": false,
   "installed": false,
-  "other_os_verified": false
+  "other_os_verified": false,
+  "ci_verification": {
+    "scope": "Script tests only (test_setup.py, test_plugin.py for claude and codex). Not a plugin install, host hook trust, or real Claude/Codex session.",
+    "run": "https://github.com/kyeonghyeon0314/shared-project-memory/actions/runs/38003757616",
+    "commit": "5e62821c80b120966ec464b58628902692acbe33",
+    "date_utc": "2026-10-09",
+    "matrix": {
+      "os": [
+        "ubuntu-latest",
+        "windows-latest",
+        "macos-latest"
+      ],
+      "python": [
+        "3.11",
+        "3.13"
+      ]
+    },
+    "result": "all 6 jobs passed",
+    "setup_checks": [
+      "dry-run",
+      "preserve-instructions-and-permissions",
+      "idempotent",
+      "conflicting-path-no-mutation",
+      "invalid-json-no-mutation",
+      "main-approval-gate",
+      "outside-link-no-mutation",
+      "agents-rule-loading",
+      "project-scope-conflict",
+      "incidental-mention-adapter",
+      "user-scope-conflict",
+      "prohibited-guidance",
+      "local-backup-outside-project",
+      "local-only-gitignore",
+      "no-absolute-shared-paths",
+      "private-local-backup",
+      "existing-gitignore-completed",
+      "git-check-ignore-verified",
+      "tracked-local-file-reported",
+      "config-dir-inside-project-refused",
+      "linked-config-dir-refused"
+    ],
+    "plugin_checks": [
+      "exec-hook-and-agent-models-declared",
+      "default-startup-read-only",
+      "configuration-dry-run",
+      "explicit-user-opt-in",
+      "approved-init-and-settings-preserved",
+      "idempotent-startup",
+      "bounded-unicode-context-and-model-policy",
+      "disabled-init-still-loads-memory",
+      "invalid-preferences-visible",
+      "invalid-approve-main-visible",
+      "main-requires-separate-approval",
+      "git-clone-on-main-loads-index-and-current",
+      "approved-main-init",
+      "conflicting-memory-path-preserved",
+      "stricter-project-rule-preserved"
+    ],
+    "posix_only_checks": [
+      "private-local-backup"
+    ]
+  }
 }
