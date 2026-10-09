@@ -22,7 +22,7 @@ root.mkdir()
 (root/'AGENTS.md').write_text('Existing agent rule\n',encoding='utf-8')
 (root/'CLAUDE.md').write_text('Existing Claude rule\n',encoding='utf-8')
 (root/'.claude').mkdir()
-(root/'.claude/settings.local.json').write_text(json.dumps({'permissions':{'allow':['Read']},'custom_flag':True}),encoding='utf-8')
+(root/'.claude/settings.local.json').write_text(json.dumps({'permissions':{'allow':['Read']},'custom_flag':True,'env':{'SPM_TEST_TOKEN':'local-secret-marker'}}),encoding='utf-8')
 before={str(path.relative_to(root)):path.read_bytes() for path in root.rglob('*') if path.is_file()}
 module.initialize(root,apply=False)
 assert before=={str(path.relative_to(root)):path.read_bytes() for path in root.rglob('*') if path.is_file()},'Dry run changed files'
@@ -33,6 +33,13 @@ assert (root/'CLAUDE.md').read_text(encoding='utf-8').startswith('Existing Claud
 settings=json.loads((root/'.claude/settings.local.json').read_text(encoding='utf-8'))
 assert settings['permissions']=={'allow':['Read']} and settings['custom_flag'] is True
 assert Path(settings['autoMemoryDirectory']).resolve()==root/'project-memory'
+memory_files=[path for path in (root/'project-memory').rglob('*') if path.is_file()]
+assert not any(b'local-secret-marker' in path.read_bytes() for path in memory_files),'Local settings were copied into shared memory'
+assert any(b'local-secret-marker' in path.read_bytes() for path in (fixtures/'isolated-user-config/shared-project-memory/backups').rglob('settings.local.json')),'Local settings backup missing from user config'
+ignored=(root/'project-memory/.gitignore').read_text(encoding='utf-8').splitlines()
+assert 'archive/' in ignored and '.setup-complete.json' in ignored,'Local-only memory files are not git-ignored'
+for shared in ('CLAUDE.md','AGENTS.md','project-memory/MEMORY.md','project-memory/current.md'):
+    assert root.as_posix() not in (root/shared).read_text(encoding='utf-8') and str(root) not in (root/shared).read_text(encoding='utf-8'),f'Absolute machine path written to shared file {shared}'
 after={str(path.relative_to(root)):path.read_bytes() for path in root.rglob('*') if path.is_file()}
 assert module.initialize(root,apply=True,approve_main=True)['changed']==[]
 assert after=={str(path.relative_to(root)):path.read_bytes() for path in root.rglob('*') if path.is_file()},'Re-run altered existing files'
@@ -102,7 +109,7 @@ assert module.MARKER in (mention/'AGENTS.md').read_text(encoding='utf-8'),'Incid
 user_conflict=fixtures/'user-conflict-project'
 user_conflict.mkdir()
 user_config=fixtures/'isolated-user-config'
-user_config.mkdir()
+user_config.mkdir(exist_ok=True)
 (user_config/'settings.json').write_text(json.dumps({'autoMemoryDirectory':str(fixtures/'user-other-memory')}),encoding='utf-8')
 try:
     module.initialize(user_conflict,apply=True,approve_main=True)
@@ -120,4 +127,4 @@ except RuntimeError:
     assert not (prohibited/'project-memory').exists()
 else:
     raise AssertionError('Contradictory memory rule was ignored')
-print(json.dumps({'status':'passed','checks':['dry-run','preserve-instructions-and-permissions','idempotent','conflicting-path-no-mutation','invalid-json-no-mutation','main-approval-gate','outside-link-no-mutation','agents-rule-loading','project-scope-conflict','incidental-mention-adapter','user-scope-conflict','prohibited-guidance'],'fixtures':str(fixtures)},ensure_ascii=False))
+print(json.dumps({'status':'passed','checks':['dry-run','preserve-instructions-and-permissions','idempotent','conflicting-path-no-mutation','invalid-json-no-mutation','main-approval-gate','outside-link-no-mutation','agents-rule-loading','project-scope-conflict','incidental-mention-adapter','user-scope-conflict','prohibited-guidance','local-backup-outside-project','local-only-gitignore','no-absolute-shared-paths'],'fixtures':str(fixtures)},ensure_ascii=False))

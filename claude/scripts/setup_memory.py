@@ -10,6 +10,8 @@ from uuid import uuid4
 
 MEMORY_FOLDER = 'project-memory'
 MARKER = '<!-- shared-project-memory -->'
+# Personal copies, setup backups and machine state stay out of Git even when project-memory/ is committed.
+GITIGNORE = '# shared-project-memory: local-only files\narchive/\n.setup-complete.json\n'
 
 def validate_project_rules(root):
     prohibition = r"(?i)\b(?:never|do not|don't|must not|forbidden|prohibited)\b.*\b(?:modify|edit|write|create|change|overwrite)\b"
@@ -50,7 +52,7 @@ def initialize(root, apply=False, approve_main=False):
         raise RuntimeError('Choose a specific project directory, not the drive or home root')
     validate_project_rules(root)
     memory = root / MEMORY_FOLDER
-    managed_paths = (memory, memory / 'topics', memory / 'checkpoints', memory / 'archive', memory / 'MEMORY.md', memory / 'current.md', memory / 'decisions.md', root / 'AGENTS.md', root / 'CLAUDE.md', root / '.claude/settings.json', root / '.claude/settings.local.json')
+    managed_paths = (memory, memory / 'topics', memory / 'checkpoints', memory / 'archive', memory / 'MEMORY.md', memory / 'current.md', memory / 'decisions.md', memory / '.gitignore', root / 'AGENTS.md', root / 'CLAUDE.md', root / '.claude/settings.json', root / '.claude/settings.local.json')
     for target in managed_paths:
         if not target.resolve().is_relative_to(root):
             raise RuntimeError(f'Memory folder resolves outside project: {target}')
@@ -81,7 +83,7 @@ def initialize(root, apply=False, approve_main=False):
         raise RuntimeError('main/master setup requires the explicit --approve-main flag')
     protocol = f'''# {root.name} 공유 기억 색인
 
-프로젝트: `{root.as_posix()}`
+프로젝트: {root.name} (경로는 이 색인이 있는 `project-memory/` 기준)
 
 ## 작업 시작
 
@@ -105,12 +107,13 @@ def initialize(root, apply=False, approve_main=False):
 - current.md / decisions.md: 현재 상태와 확정한 결정.
 - topics/: 필요할 때 읽는 주제별 기억.
 - checkpoints/: 두 도구의 작업 인계.
-- archive/: 기존 기억/초기 설정 사본. 과거 기록의 현재 유효성은 별도로 확인합니다.
+- archive/: 기존 기억/초기 설정 사본. 로컬 전용이며 Git에서 제외합니다. 과거 기록의 현재 유효성은 별도로 확인합니다.
 '''
     index_was_absent = not (memory / 'MEMORY.md').exists()
     desired = {
         memory / 'MEMORY.md': protocol.encode('utf-8'),
         memory / 'current.md': f'# 현재 상태 — {root.name}\n\n공유 기억 경로를 연결했습니다. 프로젝트의 진행 상태와 연구 결과는 아직 확인하지 않았습니다.\n새 작업에서 현재 파일/로그를 확인한 뒤 이 문서와 세션별 인계를 갱신합니다.\n'.encode('utf-8'),
+        memory / '.gitignore': GITIGNORE.encode('utf-8'),
         memory / 'decisions.md': '# 결정과 사용자 선호\n\n새 사용자 지시와 기존 프로젝트 규칙을 우선합니다. 확인된 선호와 결정만 출처/날짜와 함께 기록합니다.\n'.encode('utf-8'),
     }
     desired = {path: content for path, content in desired.items() if not path.exists()}
@@ -126,7 +129,7 @@ def initialize(root, apply=False, approve_main=False):
         root / 'CLAUDE.md': f'''\n\n{MARKER}
 ## 공유 프로젝트 기억
 
-공유 기억 경로: `{memory.as_posix()}`.
+공유 기억 경로: `project-memory/` (이 파일 기준 상대 경로).
 색인은 auto memory로 기본 로드됩니다. 이미 컨텍스트에 있으면 다시 읽지 않습니다.
 작업 시작에 project-memory/current.md와 해당 작업의 최신 checkpoints 인계를 읽습니다.
 중요 작업 완료, 종료, Codex로 전환 전에 공용 색인의 저장 규칙에 따라 인계를 남깁니다.
@@ -157,12 +160,16 @@ def initialize(root, apply=False, approve_main=False):
             raise RuntimeError(f'Write target resolves outside the project: {path}')
     before = {path: path.read_bytes() if path.exists() else None for path in desired}
     changed = [path.relative_to(root).as_posix() for path in desired]
+    # Machine-local files can hold credentials, so their backups go to the user config dir, not the shared project.
+    local_only = {settings_path}
+    stamp = datetime.now().strftime('%Y%m%d-%H%M%S') + '-' + uuid4().hex[:8]
+    backup = memory / 'archive' / ('setup-backup-' + stamp)
+    local_backup = config_root / 'shared-project-memory/backups' / (root.name + '-' + stamp)
     if apply:
         if changed:
-            backup = memory / 'archive' / ('setup-backup-' + datetime.now().strftime('%Y%m%d-%H%M%S') + '-' + uuid4().hex[:8])
             for path, content in before.items():
                 if content is not None:
-                    copy = backup / path.relative_to(root)
+                    copy = (local_backup if path in local_only else backup) / path.relative_to(root)
                     copy.parent.mkdir(parents=True, exist_ok=True)
                     copy.write_bytes(content)
         for path, content in desired.items():
@@ -183,7 +190,7 @@ def initialize(root, apply=False, approve_main=False):
         completion = memory / '.setup-complete.json'
         if changed or not completion.exists():
             completion.write_text(json.dumps({'status': 'complete', 'version': 1}) + '\n', encoding='utf-8')
-    return {'project': str(root), 'branch': branch, 'applied': apply, 'changed': changed, 'shared_memory': str(memory), 'native_memory_candidate_found': native.is_dir(), 'settings_check': 'user/project/local/managed files; live CLI or hosted policy overrides need host verification'}
+    return {'project': str(root), 'branch': branch, 'applied': apply, 'changed': changed, 'shared_memory': str(memory), 'local_backup': str(local_backup) if apply and before.get(settings_path) is not None else None, 'native_memory_candidate_found': native.is_dir(), 'settings_check': 'user/project/local/managed files; live CLI or hosted policy overrides need host verification'}
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Preview or initialize local Codex/Claude shared project memory. No network, inference calls, installs, commits or deletion.')

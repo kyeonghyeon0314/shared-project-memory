@@ -17,7 +17,9 @@
 
 - 시작 훅이 현재 상태/최신 인계 발췌를 합계 4,000자 이내로 전달합니다. MEMORY.md 색인은 Claude의 auto memory(`autoMemoryDirectory`)가 로드하므로 훅이 중복 주입하지 않습니다.
 - 자동 생성은 기본 OFF입니다. 받는 사람이 동의해 ON으로 설정하면 인식된 실제 프로젝트에서만 초기화합니다. main/master 초기화 동의는 별도입니다.
-- 기존 기억·지침·다른 설정을 보존하고, 다른 기억 경로나 명시적 프로젝트 금지와 충돌하면 중단합니다. 변경 전 기존 파일은 프로젝트 archive에 백업합니다.
+- 기존 기억·지침·다른 설정을 보존하고, 다른 기억 경로나 명시적 프로젝트 금지와 충돌하면 중단합니다. 변경 전 기존 파일은 프로젝트 archive에 백업합니다. 단, 로컬 전용인 `.claude/settings.local.json`의 백업은 `<CLAUDE_CONFIG_DIR 또는 ~/.claude>/shared-project-memory/backups/`에 두어 프로젝트에 복사하지 않습니다.
+- `project-memory/.gitignore`가 `archive/`와 `.setup-complete.json`을 Git에서 제외합니다. 공유 파일(AGENTS.md, CLAUDE.md, MEMORY.md)에는 PC별 절대 경로를 쓰지 않습니다.
+- 자동 생성이 켜져 있어도 초기화가 거부되면(main/master 미동의 등) 이미 있는 `project-memory/`는 그대로 불러오고 `SHARED_PROJECT_MEMORY_SETUP_SKIPPED`로 이유를 알립니다.
 - 작업 인계 저장은 에이전트가 스킬 지침을 따르는 방식입니다. 모든 대화를 자동 보관하지 않습니다.
 
 ## 필요한 것

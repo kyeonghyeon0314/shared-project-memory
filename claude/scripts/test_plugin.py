@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -83,6 +84,20 @@ subprocess.run(['git', 'init', '-b', 'main', str(main)], check=True, capture_out
 blocked = call('hook_entry.py', event={'cwd': str(main)})
 assert 'SHARED_PROJECT_MEMORY_LOAD_FAILED' in blocked['systemMessage'] and not (main / 'project-memory').exists()
 checks.append('main-requires-separate-approval')
+clone = fixtures / 'teammate-clone-on-main'
+clone.mkdir()
+subprocess.run(['git', 'init', '-b', 'main', str(clone)], check=True, capture_output=True)
+(clone / 'pyproject.toml').write_text('[project]\n', encoding='utf-8')
+shutil.copytree(root / 'project-memory', clone / 'project-memory')
+for name in ('AGENTS.md', 'CLAUDE.md'):
+    shutil.copy2(root / name, clone / name)
+shared = call('hook_entry.py', event={'cwd': str(clone)})
+context = shared['hookSpecificOutput']['additionalContext']
+assert 'SHARED_PROJECT_MEMORY_LOADED' in context and 'SHARED_PROJECT_MEMORY_SETUP_SKIPPED' in context, context
+assert 'Current verified state' in context and 'SHARED_PROJECT_MEMORY_LOAD_FAILED' not in json.dumps(shared, ensure_ascii=False)
+assert 'SHARED_PROJECT_MEMORY_SETUP_SKIPPED' in shared['systemMessage']
+assert not (clone / '.claude').exists()
+checks.append('existing-memory-loads-when-setup-refused')
 call('configure.py', '--apply', '--approve-main')
 assert 'SHARED_PROJECT_MEMORY_INITIALIZED' in call('hook_entry.py', event={'cwd': str(main)})['hookSpecificOutput']['additionalContext']
 checks.append('approved-main-init')
