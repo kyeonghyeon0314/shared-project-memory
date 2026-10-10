@@ -1,0 +1,25 @@
+name: Bug report
+description: Something works differently than documented.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations: {required: true}
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      placeholder: "plugin 0.1.4, Claude Code 2.1.296, macOS 15, Python 3.13"
+    validations: {required: true}
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+  - type: textarea
+    id: output
+    attributes:
+      label: Relevant output
+      description: Remove secrets and personal paths before posting.
+      render: text
