@@ -30,9 +30,9 @@
   "installed": false,
   "ci_verification": {
     "scope": "Script tests only (test_setup.py, test_plugin.py for claude and codex). Not a plugin install, host hook trust, or real Claude/Codex session.",
-    "run": "https://github.com/kyeonghyeon0314/shared-project-memory/actions/runs/38003757616",
-    "commit": "5e62821c80b120966ec464b58628902692acbe33",
-    "date_utc": "2026-10-09",
+    "run": "https://github.com/kyeonghyeon0314/shared-project-memory/actions/runs/38016697984",
+    "commit": "6a966400171bb461bb52ab298ca1698a7eac617b",
+    "date_utc": "2026-10-10",
     "matrix": {
       "os": [
         "ubuntu-latest",
@@ -66,7 +66,10 @@
       "git-check-ignore-verified",
       "tracked-local-file-reported",
       "config-dir-inside-project-refused",
-      "linked-config-dir-refused"
+      "linked-config-dir-refused",
+      "negated-folder-repaired",
+      "negated-backup-file-repaired",
+      "unverified-ignore-aborts-before-copies"
     ],
     "plugin_checks": [
       "default-startup-read-only",
