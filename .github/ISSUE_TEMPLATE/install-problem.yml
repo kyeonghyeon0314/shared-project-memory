@@ -1,0 +1,38 @@
+name: Installation or hook problem
+description: The plugin does not install, the hook does not run, or memory is not injected.
+labels: [installation]
+body:
+  - type: dropdown
+    id: host
+    attributes:
+      label: Agent
+      options: [Claude Code, Codex, Both]
+    validations: {required: true}
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Plugin version, agent version, OS, Python version.
+      placeholder: "plugin 0.1.4, Codex 0.162.0, Windows 11, Python 3.12"
+    validations: {required: true}
+  - type: dropdown
+    id: step
+    attributes:
+      label: Where does it fail?
+      options:
+        - Marketplace add / plugin install
+        - Hook not listed (Codex /hooks, hooks/list)
+        - Hook runs but memory is not injected
+        - Setup (setup_memory.py / configure.py)
+        - Other
+    validations: {required: true}
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: Command output or SHARED_PROJECT_MEMORY_* messages. Remove secrets and personal paths before posting.
+      render: text
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce

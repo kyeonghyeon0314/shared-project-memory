@@ -1,54 +1,123 @@
 # Shared Project Memory
 
-Codex와 Claude Code가 같은 프로젝트 기억(`project-memory/`)을 이어 쓰도록 하는 로컬 플러그인입니다. 두 도구용 패키지는 같은 기억 형식(MEMORY.md / current.md / decisions.md / topics / checkpoints / archive)과 같은 초기화 스크립트를 사용합니다.
+English | [한국어](README.ko.md)
 
-| 폴더 | 대상 | 버전 |
-|---|---|---|
-| [`claude/`](claude/) | Claude Code 플러그인 (SessionStart 훅, 헬퍼 에이전트 2개, 스킬) | 0.1.4 |
-| [`codex/`](codex/) | Codex 로컬 플러그인 | 0.1.4 |
+**One project memory for Claude Code and OpenAI Codex.** Switch between the two coding agents without re-explaining where you left off.
 
-공통 요구 사항: Python 3.11 이상, Git. 프로젝트 기억은 각 프로젝트 폴더 안에 있으므로 플러그인과 별개로 프로젝트를 따라 이동합니다.
+Each agent gets a plugin. Both read and write the same plain Markdown files in your repository (`project-memory/`). At the start of every session, a SessionStart hook injects a bounded excerpt of that memory, so the next agent — Claude or Codex — starts from the latest state and handoff.
 
-## Claude Code 설치
+No server, database, vector store or external API. Just files in your project and two small Python hooks.
+
+## Why
+
+If you use more than one coding agent on the same project, each new session starts cold: it doesn't know what the other agent changed, what was verified, or what was decided. You end up pasting summaries by hand. Shared Project Memory makes the handoff a file that both agents load automatically.
+
+## How it works
+
+```
+ Claude Code session                         Codex session (later)
+ ───────────────────                         ─────────────────────
+ work on the task                            SessionStart hook runs
+ save a handoff  ──►  project-memory/  ──►   injects ≤ 4,000 chars:
+   checkpoints/20261010-1400-claude.md         • latest checkpoint (path always shown)
+   current.md                                  • MEMORY.md index
+                                               • current.md
+                                             continues from the handoff
+```
+
+| Step | Automatic? |
+|---|---|
+| **Loading** memory at session start (startup, resume, clear, compact) | Yes — SessionStart hook, no model call |
+| **Saving** a handoff (checkpoint) after meaningful work or before switching tools | The agent does it by following the bundled skill; it is not a transcript recorder |
+| First-time setup of `project-memory/` in a project | Only after you opt in (off by default) |
+
+The injected excerpt is capped at 4,000 characters. The budget goes to the newest checkpoint first (at least 800 characters, and its path is always listed), then the index, then `current.md`. Anything truncated is marked so the agent knows to open the full file.
+
+## Memory layout
+
+```
+project-memory/
+├── MEMORY.md        index and save rules
+├── current.md       current state of the project
+├── decisions.md     confirmed decisions and preferences
+├── topics/          notes read only when relevant
+├── checkpoints/     one handoff file per session — never overwritten
+├── archive/         backups of pre-existing files (git-ignored)
+└── .gitignore       keeps archive/ and machine state out of Git
+```
+
+## Quick start
+
+Requirements: Python 3.11+, Git, and Claude Code and/or Codex with command hooks.
+
+### Claude Code
 
 ```bash
 claude plugin marketplace add kyeonghyeon0314/shared-project-memory
 claude plugin install shared-project-memory@shared-project-memory-local
 ```
 
-설치 후 한 번, 자동 생성 동의를 설정합니다(PC마다 따로 저장됨). 미리보기 후 `--apply`를 붙이세요.
+Restart Claude Code. To let the plugin create `project-memory/` automatically in recognized projects, opt in once per machine (preview first, then apply):
 
 ```bash
-python3 <설치된 claude 폴더>/scripts/configure.py --enable-auto-init
-python3 <설치된 claude 폴더>/scripts/configure.py --enable-auto-init --apply
+python3 <installed claude plugin dir>/scripts/configure.py --enable-auto-init
+python3 <installed claude plugin dir>/scripts/configure.py --enable-auto-init --apply
 ```
 
-- 헬퍼 모델: `shared-project-memory:memory-summarizer`(claude-sonnet-5-5 / medium), `shared-project-memory:simple-extractor`(claude-haiku-5-5 / medium). 바꾸려면 `claude/agents/*.md`의 `model:`/`effort:`를 수정합니다.
-- 이미 같은 이름(`shared-project-memory-local`)의 로컬 marketplace를 등록한 PC는 먼저 `claude plugin marketplace remove shared-project-memory-local` 후 위 명령으로 바꿉니다. 두 경로를 동시에 켜면 훅이 중복 실행됩니다.
-- 자세한 설정·제약: [`claude/README.md`](claude/README.md)
+Or set up a single project explicitly: `python3 <plugin dir>/scripts/setup_memory.py <project> --apply`.
 
-## Codex 설치
-
-저장소를 클론한 뒤 `codex/` 폴더를 로컬 marketplace로 등록합니다.
+### Codex
 
 ```bash
-codex plugin marketplace add "<클론 경로>/codex"
+git clone https://github.com/kyeonghyeon0314/shared-project-memory.git
+codex plugin marketplace add "<clone path>/codex"
 codex plugin add shared-project-memory@shared-project-memory-local
 ```
 
-훅 신뢰와 사용자 설정은 [`codex/README.md`](codex/README.md)를 따릅니다.
+Then open `/hooks` in Codex, review the shared-project-memory SessionStart hook and trust it — Codex does not run plugin hooks until you do. Opt-in for automatic setup works the same way with `codex/scripts/configure.py`.
 
-## 두 도구를 함께 쓸 때
+Details: [`claude/README.md`](claude/README.md), [`codex/README.md`](codex/README.md) (Korean).
 
-- 같은 프로젝트의 `project-memory/`를 공유합니다. 도구를 바꾸기 전에 인계(checkpoint)를 남기세요.
-- 자동 생성 동의와 main/master 동의는 도구별 설정 파일에 따로 저장됩니다(Claude: `~/.claude/shared-project-memory/settings.json`, Codex: `~/.codex/shared-project-memory/settings.json`).
+## Safety and privacy
 
-## 0.1.2 이상으로 업데이트할 때
+- **Off by default.** Installing the plugin does not create files. Automatic setup needs an explicit opt-in; setup on `main`/`master` needs a second, separate approval.
+- **Preview first.** Every setup and configuration command prints the changes and writes nothing without `--apply`.
+- **Existing files are preserved.** `AGENTS.md`, `CLAUDE.md` and settings are appended to, never replaced. Conflicting memory paths or project rules that forbid edits stop setup.
+- **Local secrets stay local.** Backups of `.claude/settings.local.json` go to your user config folder (mode 0600), never into the project. Before writing anything into `archive/`, setup asks Git (`git check-ignore`) whether each exact path is ignored and aborts without writing if not — even when an existing `.gitignore` uses `!` negations.
+- **No absolute paths** in shared files, so the memory works for teammates who clone the repo.
 
-- 플러그인을 업데이트한 뒤, 이미 초기화한 각 프로젝트에서 `setup_memory.py <프로젝트>`(미리보기)와 `--apply`를 한 번 실행하세요. 그래야 `project-memory/.gitignore` 보호 규칙이 적용됩니다.
-- 이전 버전이 `CLAUDE.md`에 적은 절대 경로 줄(`공유 기억 경로: /...`)은 자동으로 바뀌지 않으니 직접 지우거나 `project-memory/`로 고치세요.
-- 변경 내역: [CHANGELOG.md](CHANGELOG.md)
+## Verification status (0.1.4)
 
-## 라이선스
+| | Claude Code | Codex |
+|---|---|---|
+| Marketplace install | ✅ | ✅ |
+| SessionStart hook runs and injects memory | ✅ (Docker, live session) | ✅ (Windows host, after `/hooks` trust) |
+| Latest checkpoint survives a long `current.md` | ✅ | ✅ |
+| Helper agents run on the configured model | ✅ Sonnet / Haiku | ✅ user-selected models and effort |
+
+CI runs the test suite on Linux, Windows and macOS with Python 3.11 and 3.13. Details are recorded in `claude/verification.json` and `codex/verification.json`.
+
+## Known limitations
+
+- Saving handoffs depends on the agent following the skill; an abrupt exit can lose an unsaved handoff.
+- The 4,000-character injection is an excerpt. Keep `current.md` short and move history into checkpoints or `topics/`.
+- Codex reads the plugin from `.codex-plugin/plugin.json`; a portable root `plugin.json` hides plugin hooks in current Codex versions ([openai/codex#39895](https://github.com/openai/codex/issues/39895)), so ChatGPT ZIP upload is not supported.
+- Projects initialized by older versions need one `setup_memory.py <project> --apply` run after updating to get the `.gitignore` protection.
+
+## Updating
+
+```bash
+# Claude Code
+claude plugin marketplace update shared-project-memory-local
+claude plugin update shared-project-memory@shared-project-memory-local
+```
+
+For Codex, pull the clone and run `codex plugin add shared-project-memory@shared-project-memory-local` again. See [CHANGELOG.md](CHANGELOG.md).
+
+## Feedback
+
+Installation problems and bugs: please [open an issue](https://github.com/kyeonghyeon0314/shared-project-memory/issues/new/choose). Reports from setups other than Windows + Codex desktop or Linux + Claude Code are especially welcome.
+
+## License
 
 [MIT](LICENSE)
