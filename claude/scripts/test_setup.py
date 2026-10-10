@@ -141,7 +141,7 @@ git(fixtures,'init','-q','-b','work',str(existing))
 result=module.initialize(existing,apply=True)
 lines=(existing/'project-memory/.gitignore').read_text(encoding='utf-8').splitlines()
 assert lines[0]=='notes.tmp' and 'archive/' in lines and '.setup-complete.json' in lines,'Existing .gitignore was replaced or not completed'
-assert result['git_exposure']=={'git':True,'local_files_ignored':True,'tracked_local_files':[]},result['git_exposure']
+assert result['git_exposure']=={'git':True,'local_copies_verified_ignored':True,'tracked_local_files':[]},result['git_exposure']
 git(existing,'check-ignore','-q','project-memory/archive/setup-backup-x/AGENTS.md')
 git(existing,'check-ignore','-q','project-memory/.setup-complete.json')
 git(existing,'add','-A')
@@ -154,7 +154,58 @@ git(fixtures,'init','-q','-b','work',str(tracked))
 git(tracked,'add','-A')
 git(tracked,'commit','-q','-m','pre-existing tracked backup')
 exposure=module.initialize(tracked,apply=True)['git_exposure']
-assert exposure['local_files_ignored'] is True and exposure['tracked_local_files']==['project-memory/archive/old-backup.json'],exposure
+assert exposure['local_copies_verified_ignored'] is True and exposure['tracked_local_files']==['project-memory/archive/old-backup.json'],exposure
+negations={
+    'whole-folder':'archive/\n!archive/\n.setup-complete.json\n',
+    'single-backup-file':'archive/\n!archive/\narchive/*\n!archive/setup-backup-*/\narchive/setup-backup-*/*\n!archive/setup-backup-*/AGENTS.md\n.setup-complete.json\n',
+}
+for label,rules in negations.items():
+    negated=fixtures/('negation-'+label)
+    (negated/'project-memory').mkdir(parents=True)
+    git(fixtures,'init','-q','-b','work',str(negated))
+    (negated/'AGENTS.md').write_text('Existing rule\n',encoding='utf-8')
+    (negated/'project-memory/.gitignore').write_text(rules,encoding='utf-8')
+    if label=='single-backup-file':
+        git(negated,'check-ignore','-q','project-memory/archive/.probe')
+        assert subprocess.run(['git','-C',str(negated),'check-ignore','-q','project-memory/archive/setup-backup-x/AGENTS.md']).returncode==1,'Fixture does not re-include the backup file'
+    result=module.initialize(negated,apply=True)
+    assert result['git_exposure']['local_copies_verified_ignored'] is True,result
+    assert (negated/'project-memory/.gitignore').read_text(encoding='utf-8').startswith(rules),f'{label}: existing rules not preserved'
+    backups=[path.relative_to(negated).as_posix() for path in (negated/'project-memory/archive').rglob('*') if path.is_file()]
+    assert any(name.endswith('/AGENTS.md') for name in backups),backups
+    for name in backups:
+        git(negated,'check-ignore','-q',name)
+    git(negated,'add','-A')
+    staged=git(negated,'ls-files').stdout.splitlines()
+    assert not [name for name in staged if '/archive/' in name or name.endswith('.setup-complete.json')],f'{label}: local-only copy staged {staged}'
+    assert module.initialize(negated,apply=True)['changed']==[],f'{label}: repaired .gitignore changed on re-run'
+refused=fixtures/'ignore-verification-fails'
+(refused/'project-memory').mkdir(parents=True)
+git(fixtures,'init','-q','-b','work',str(refused))
+(refused/'AGENTS.md').write_text('Existing rule\n',encoding='utf-8')
+(refused/'project-memory/.gitignore').write_text('notes.tmp\n',encoding='utf-8')
+snapshot={str(path.relative_to(refused)):path.read_bytes() for path in refused.rglob('*') if path.is_file() and '.git' not in path.relative_to(refused).parts}
+real_git_ignored=module.git_ignored
+module.git_ignored=lambda root,paths:set()
+try:
+    module.initialize(refused,apply=True)
+except RuntimeError as error:
+    assert 'nothing was written' in str(error),error
+    assert snapshot=={str(path.relative_to(refused)):path.read_bytes() for path in refused.rglob('*') if path.is_file() and '.git' not in path.relative_to(refused).parts},'Files changed although ignore verification failed'
+    assert not (refused/'project-memory/archive').exists()
+else:
+    raise AssertionError('Setup wrote local-only copies Git would not ignore')
+fresh=fixtures/'ignore-verification-fails-fresh'
+git(fixtures,'init','-q','-b','work',str(fresh))
+(fresh/'AGENTS.md').write_text('Existing rule\n',encoding='utf-8')
+try:
+    module.initialize(fresh,apply=True)
+except RuntimeError:
+    assert not (fresh/'project-memory').exists() and (fresh/'AGENTS.md').read_text(encoding='utf-8')=='Existing rule\n','Refused setup left project-memory behind'
+else:
+    raise AssertionError('Fresh project setup ignored failed verification')
+finally:
+    module.git_ignored=real_git_ignored
 inside=fixtures/'config-inside-project'
 (inside/'.claude').mkdir(parents=True)
 (inside/'.claude/settings.local.json').write_text('{"env":{"SPM_TEST_TOKEN":"x"}}',encoding='utf-8')
@@ -174,4 +225,4 @@ for label,config in (('direct',inside/'.claude-config'),('linked',fixtures/'link
         assert snapshot=={str(path.relative_to(inside)):path.read_bytes() for path in inside.rglob('*') if path.is_file()},f'{label}: files changed before refusal'
     else:
         raise AssertionError(f'{label}: local settings backup was allowed inside the project')
-print(json.dumps({'status':'passed','checks':['dry-run','preserve-instructions-and-permissions','idempotent','conflicting-path-no-mutation','invalid-json-no-mutation','main-approval-gate','outside-link-no-mutation','agents-rule-loading','project-scope-conflict','incidental-mention-adapter','user-scope-conflict','prohibited-guidance','local-backup-outside-project','local-only-gitignore','no-absolute-shared-paths','private-local-backup','existing-gitignore-completed','git-check-ignore-verified','tracked-local-file-reported','config-dir-inside-project-refused','linked-config-dir-refused'],'fixtures':str(fixtures)},ensure_ascii=False))
+print(json.dumps({'status':'passed','checks':['dry-run','preserve-instructions-and-permissions','idempotent','conflicting-path-no-mutation','invalid-json-no-mutation','main-approval-gate','outside-link-no-mutation','agents-rule-loading','project-scope-conflict','incidental-mention-adapter','user-scope-conflict','prohibited-guidance','local-backup-outside-project','local-only-gitignore','no-absolute-shared-paths','private-local-backup','existing-gitignore-completed','git-check-ignore-verified','tracked-local-file-reported','config-dir-inside-project-refused','linked-config-dir-refused','negated-folder-repaired','negated-backup-file-repaired','unverified-ignore-aborts-before-copies'],'fixtures':str(fixtures)},ensure_ascii=False))

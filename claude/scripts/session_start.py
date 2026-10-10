@@ -109,10 +109,11 @@ def build_context(event, host, auto_init=False, approve_main=False):
                 result = initialize(root, apply=True, approve_main=approve_main)
                 initialized = bool(result['changed'])
                 exposure = result['git_exposure']
-                if exposure['git'] and (not exposure['local_files_ignored'] or exposure['tracked_local_files']):
+                # New copies are verified ignored before setup writes them; files committed earlier stay tracked.
+                if exposure['tracked_local_files']:
                     exposure_warning = (
-                        'SHARED_PROJECT_MEMORY_GIT_EXPOSURE: project-memory/archive or .setup-complete.json is not ignored by Git'
-                        + (' and already tracked: ' + ', '.join(exposure['tracked_local_files'][:5]) if exposure['tracked_local_files'] else '')
+                        'SHARED_PROJECT_MEMORY_GIT_EXPOSURE: local-only memory files are already tracked by Git: '
+                        + ', '.join(exposure['tracked_local_files'][:5])
                         + '. Tell the user; untracking or rotating secrets needs their decision.'
                     )
         except (RuntimeError, ValueError) as error:

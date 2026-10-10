@@ -18,7 +18,8 @@
 - 시작 훅이 현재 상태/최신 인계 발췌를 합계 4,000자 이내로 전달합니다. MEMORY.md 색인은 Claude의 auto memory(`autoMemoryDirectory`)가 로드하므로 훅이 중복 주입하지 않습니다.
 - 자동 생성은 기본 OFF입니다. 받는 사람이 동의해 ON으로 설정하면 인식된 실제 프로젝트에서만 초기화합니다. main/master 초기화 동의는 별도입니다.
 - 기존 기억·지침·다른 설정을 보존하고, 다른 기억 경로나 명시적 프로젝트 금지와 충돌하면 중단합니다. 변경 전 기존 파일은 프로젝트 archive에 백업합니다. 단, 로컬 전용인 `.claude/settings.local.json`의 백업은 `<CLAUDE_CONFIG_DIR 또는 ~/.claude>/shared-project-memory/backups/`에 본인만 읽을 수 있는 권한(POSIX 0600)으로 두며, 이 경로가 링크를 거쳐서라도 프로젝트 안을 가리키면 초기화를 중단합니다.
-- `project-memory/.gitignore`가 `archive/`와 `.setup-complete.json`을 Git에서 제외합니다. 기존 `.gitignore`가 있으면 내용을 보존하고 빠진 규칙만 덧붙입니다. 초기화 결과의 `git_exposure`는 `git check-ignore`/`git ls-files`로 실제 제외 여부와 이미 추적 중인 파일을 보고합니다. 이미 커밋된 파일은 자동으로 추적 해제하지 않으므로 직접 `git rm --cached` 하고, 비밀값이 커밋된 적이 있다면 교체하세요. 공유 파일(AGENTS.md, CLAUDE.md, MEMORY.md)에는 PC별 절대 경로를 쓰지 않습니다.
+- `project-memory/.gitignore`가 `archive/`와 `.setup-complete.json`을 Git에서 제외합니다. 기존 `.gitignore`가 있으면 내용을 보존하고 규칙을 덧붙입니다. 규칙이 이미 있어도 `!` 부정 패턴 때문에 Git이 실제로 제외하지 않으면 규칙 묶음을 파일 끝에 다시 붙입니다. Git 저장소에서는 archive에 쓸 실제 파일 경로를 하나하나 `git check-ignore`로 확인한 뒤에만 사본을 만들고, 하나라도 제외되지 않으면 `.gitignore`를 되돌리고 아무것도 쓰지 않은 채 중단합니다. 초기화 결과의 `git_exposure.local_copies_verified_ignored`는 이 사전 검증 결과이고, `tracked_local_files`는 `git ls-files`로 찾은 이미 추적 중인 파일 목록입니다(둘은 별개입니다). 이미 커밋된 파일은 자동으로 추적 해제하지 않으므로 직접 `git rm --cached` 하고, 비밀값이 커밋된 적이 있다면 교체하세요.
+- 이 보호 규칙은 초기화를 실행할 때 적용됩니다. 이미 연결된 프로젝트는 세션 시작 때 초기화를 다시 실행하지 않으므로, 업데이트 후 `python scripts/setup_memory.py <프로젝트>`(미리보기)와 `--apply`를 한 번 직접 실행해야 `.gitignore` 보완이 적용됩니다. 이전 버전이 CLAUDE.md에 쓴 절대 경로 줄도 자동으로 고쳐지지 않습니다. 공유 파일(AGENTS.md, CLAUDE.md, MEMORY.md)에는 PC별 절대 경로를 쓰지 않습니다.
 - 자동 생성이 켜져 있어도 초기화가 거부되면(main/master 미동의 등) 이미 있는 `project-memory/`는 그대로 불러오고(Claude의 기본 기억 연결이 확인되지 않으면 MEMORY.md 색인도 제한된 길이로 함께 주입) `SHARED_PROJECT_MEMORY_SETUP_SKIPPED`로 이유를 알립니다.
 - 작업 인계 저장은 에이전트가 스킬 지침을 따르는 방식입니다. 모든 대화를 자동 보관하지 않습니다.
 

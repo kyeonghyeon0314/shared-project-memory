@@ -14,6 +14,11 @@ MARKER = '<!-- shared-project-memory -->'
 GITIGNORE_HEADER = '# shared-project-memory: local-only files\n'
 GITIGNORE_RULES = ('archive/', '.setup-complete.json')
 LOCAL_ONLY_PATHS = ('project-memory/archive', 'project-memory/.setup-complete.json')
+# Shapes of the files setup writes into archive/; a negation pattern may re-include any one of them.
+GITIGNORE_PROBES = tuple(
+    'project-memory/archive/setup-backup-00000000-000000-probe/' + name
+    for name in ('AGENTS.md', 'CLAUDE.md', 'project-memory/.gitignore', 'project-memory/MEMORY.md')
+) + ('project-memory/archive/claude-native/MEMORY.md', 'project-memory/.setup-complete.json')
 
 
 def user_config_root():
@@ -48,30 +53,52 @@ def native_memory_linked(root):
     return bool(configured) and Path(configured).expanduser().resolve() == (root / MEMORY_FOLDER).resolve()
 
 
-def gitignore_content(path):
-    """Existing .gitignore with any missing local-only rules appended; None when nothing is missing."""
+def gitignore_content(path, force=False):
+    """Existing .gitignore plus the local-only rules; None when nothing needs adding.
+
+    force appends the whole block at the end even if the rules appear earlier: within one file the last match wins,
+    and nothing inside an excluded directory can be re-included, so a trailing `archive/` defeats earlier negations.
+    """
     original = path.read_text(encoding='utf-8-sig') if path.exists() else ''
     present = {line.strip() for line in original.splitlines()}
     missing = [rule for rule in GITIGNORE_RULES if rule not in present and '/' + rule not in present]
-    if not missing:
+    rules = list(GITIGNORE_RULES) if force else missing
+    if not rules:
         return None
     prefix = original if not original or original.endswith('\n') else original + '\n'
-    return (prefix + GITIGNORE_HEADER + ''.join(rule + '\n' for rule in missing)).encode('utf-8')
+    return (prefix + GITIGNORE_HEADER + ''.join(rule + '\n' for rule in rules)).encode('utf-8')
 
 
-def git_exposure(root):
-    """Ask Git itself whether local-only memory files are ignored and whether any are already tracked."""
-    probe = subprocess.run(['git', '-C', str(root), 'rev-parse', '--is-inside-work-tree'], capture_output=True, text=True)
-    if probe.returncode:
-        return {'git': False, 'local_files_ignored': None, 'tracked_local_files': []}
-    ignored = all(
-        subprocess.run(['git', '-C', str(root), 'check-ignore', '-q', '--no-index', target], capture_output=True).returncode == 0
-        for target in ('project-memory/archive/.probe', 'project-memory/.setup-complete.json')
+def in_git_worktree(root):
+    return subprocess.run(['git', '-C', str(root), 'rev-parse', '--is-inside-work-tree'], capture_output=True).returncode == 0
+
+
+def git_ignored(root, relative_paths):
+    """Subset of project-relative paths that Git's ignore rules exclude (tracking state not considered)."""
+    if not relative_paths:
+        return set()
+    result = subprocess.run(
+        ['git', '-C', str(root), 'check-ignore', '--no-index', '-z', '--stdin'],
+        input=b'\0'.join(path.encode('utf-8') for path in relative_paths) + b'\0', capture_output=True,
     )
-    tracked = subprocess.run(['git', '-C', str(root), 'ls-files', '-z', '--', *LOCAL_ONLY_PATHS], capture_output=True, text=True)
-    if tracked.returncode:
-        raise RuntimeError(tracked.stderr.strip() or 'Cannot list tracked project-memory files')
-    return {'git': True, 'local_files_ignored': ignored, 'tracked_local_files': [name for name in tracked.stdout.split('\0') if name]}
+    if result.returncode not in (0, 1):
+        raise RuntimeError(result.stderr.decode('utf-8', 'replace').strip() or 'git check-ignore failed')
+    return {name.decode('utf-8') for name in result.stdout.split(b'\0') if name}
+
+
+def git_tracked_local_files(root):
+    result = subprocess.run(['git', '-C', str(root), 'ls-files', '-z', '--', *LOCAL_ONLY_PATHS], capture_output=True)
+    if result.returncode:
+        raise RuntimeError(result.stderr.decode('utf-8', 'replace').strip() or 'Cannot list tracked project-memory files')
+    return [name.decode('utf-8') for name in result.stdout.split(b'\0') if name]
+
+
+def write_atomic(path, content):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(mode='wb', dir=path.parent, prefix=path.name + '.', delete=False) as temporary:
+        temporary.write(content)
+        temporary_path = temporary.name
+    os.replace(temporary_path, path)
 
 
 def write_private(path, content, private_root):
@@ -174,7 +201,9 @@ def initialize(root, apply=False, approve_main=False):
         memory / 'decisions.md': '# 결정과 사용자 선호\n\n새 사용자 지시와 기존 프로젝트 규칙을 우선합니다. 확인된 선호와 결정만 출처/날짜와 함께 기록합니다.\n'.encode('utf-8'),
     }
     desired = {path: content for path, content in desired.items() if not path.exists()}
-    ignore_rules = gitignore_content(memory / '.gitignore')
+    use_git = in_git_worktree(root)
+    probes_exposed = use_git and not set(GITIGNORE_PROBES) <= git_ignored(root, GITIGNORE_PROBES)
+    ignore_rules = gitignore_content(memory / '.gitignore', force=probes_exposed)
     if ignore_rules is not None:
         desired[memory / '.gitignore'] = ignore_rules
     blocks = {
@@ -228,7 +257,36 @@ def initialize(root, apply=False, approve_main=False):
     backs_up_local = any(before.get(path) is not None for path in local_only)
     if backs_up_local and local_backup.resolve().is_relative_to(root):
         raise RuntimeError(f'Local settings backup would land inside the project ({local_backup}); point CLAUDE_CONFIG_DIR outside it')
+    archive = memory / 'archive'
+    local_copies = [backup / path.relative_to(root) for path, content in before.items() if content is not None and path not in local_only]
+    local_copies += [path for path in desired if path.is_relative_to(archive)] + [memory / '.setup-complete.json']
+    verified_ignored = None
     if apply:
+        for path in desired:
+            current = path.read_bytes() if path.exists() else None
+            if current != before[path]:
+                raise RuntimeError(f'File changed during setup; refusing to overwrite: {path}')
+        gitignore = memory / '.gitignore'
+        memory_existed = memory.exists()
+        if gitignore in desired:
+            write_atomic(gitignore, desired[gitignore])
+        if use_git:
+            # Verify every exact path about to be written, after the ignore rules are in place and before any copy exists.
+            relative = [path.relative_to(root).as_posix() for path in local_copies]
+            try:
+                exposed = sorted(set(relative) - git_ignored(root, relative))
+            except RuntimeError as error:
+                exposed = [f'(check failed: {error})']
+            if exposed:
+                if gitignore in desired:
+                    if before[gitignore] is None:
+                        gitignore.unlink()
+                    else:
+                        write_atomic(gitignore, before[gitignore])
+                    if not memory_existed:
+                        memory.rmdir()
+                raise RuntimeError('Git would not ignore local-only memory copies; nothing was written: ' + ', '.join(exposed[:5]))
+            verified_ignored = True
         if changed:
             for path, content in before.items():
                 if content is None:
@@ -240,14 +298,8 @@ def initialize(root, apply=False, approve_main=False):
                     copy.parent.mkdir(parents=True, exist_ok=True)
                     copy.write_bytes(content)
         for path, content in desired.items():
-            current = path.read_bytes() if path.exists() else None
-            if current != before[path]:
-                raise RuntimeError(f'File changed during setup; refusing to overwrite: {path}')
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with tempfile.NamedTemporaryFile(mode='wb', dir=path.parent, prefix=path.name+'.', delete=False) as temporary:
-                temporary.write(content)
-                temporary_path = temporary.name
-            os.replace(temporary_path, path)
+            if path != gitignore:
+                write_atomic(path, content)
         for folder in ('topics', 'checkpoints', 'archive'):
             target = memory / folder
             if not target.resolve().is_relative_to(root):
@@ -257,7 +309,7 @@ def initialize(root, apply=False, approve_main=False):
         completion = memory / '.setup-complete.json'
         if changed or not completion.exists():
             completion.write_text(json.dumps({'status': 'complete', 'version': 1}) + '\n', encoding='utf-8')
-    return {'project': str(root), 'branch': branch, 'applied': apply, 'changed': changed, 'shared_memory': str(memory), 'local_backup': str(local_backup) if apply and backs_up_local else None, 'git_exposure': git_exposure(root), 'native_memory_candidate_found': native.is_dir(), 'settings_check': 'user/project/local/managed files; live CLI or hosted policy overrides need host verification'}
+    return {'project': str(root), 'branch': branch, 'applied': apply, 'changed': changed, 'shared_memory': str(memory), 'local_backup': str(local_backup) if apply and backs_up_local else None, 'git_exposure': {'git': use_git, 'local_copies_verified_ignored': verified_ignored, 'tracked_local_files': git_tracked_local_files(root) if use_git else []}, 'native_memory_candidate_found': native.is_dir(), 'settings_check': 'user/project/local/managed files; live CLI or hosted policy overrides need host verification'}
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Preview or initialize local Codex/Claude shared project memory. No network, inference calls, installs, commits or deletion.')
