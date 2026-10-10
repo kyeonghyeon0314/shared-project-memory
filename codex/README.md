@@ -1,4 +1,4 @@
-# Shared Project Memory — Codex 로컬 플러그인 0.1.2
+# Shared Project Memory — Codex 로컬 플러그인 0.1.3
 
 프로젝트 안의 `project-memory/`로 작업 상태·결정·인계를 공유합니다. 이 배포판은 Codex용이며 Claude 플러그인 manifest/에이전트는 포함하지 않습니다. 공용 Markdown 형식과 초기화 스크립트는 Claude 이식에 재사용할 수 있습니다.
 
@@ -19,9 +19,7 @@
 
 ## ZIP 업로드와 로컬 설치의 차이
 
-이 ZIP은 루트 Agent Plugins manifest에 OpenAI hooks/로컬 실행 선언을 포함합니다. 앱의 새 플러그인 → 파일 선택 → 플러그인 추가는 계정에 비공개 플러그인을 등록하는 경로입니다. 로컬 marketplace 등록과 같지 않습니다. 계정 등록이 성공해도 지원되는 로컬 Codex 세션에서 설치·훅 신뢰·실제 주입을 확인해야 합니다. cloud-orchestrated Work에서는 이 명령 훅이 지원되지 않습니다.
-
-0.1.0의 루트 manifest는 호환 manifest의 hooks 선언을 보존하지 못했습니다. 0.1.1에서 수정했습니다. 이 결함이 화면의 업로드 거절 자체를 일으켰다고 확정한 것은 아니며, 서버 등록 응답 검증 전에는 업로드 성공을 주장하지 않습니다.
+이 패키지의 manifest는 `.codex-plugin/plugin.json` 하나입니다. 0.1.2까지 있던 루트 `plugin.json`(Agent Plugins 형식)은 0.1.3에서 제거했습니다. Codex 0.153·0.162는 루트 `plugin.json`이 있으면 그 파일을 우선 읽는데, 그 형식에서는 플러그인 훅을 불러오지 않아 SessionStart 훅이 `hooks/list`와 `/hooks` 화면에 나타나지 않았습니다(스킬만 로드됨). 앱의 새 플러그인 → 파일 선택 → 플러그인 추가는 계정에 비공개 플러그인을 등록하는 경로이며 로컬 marketplace 등록과 같지 않습니다. 이 경로의 업로드 성공은 검증하지 않았습니다. 어느 경로든 지원되는 로컬 Codex 세션에서 설치·훅 신뢰·실제 주입을 확인해야 합니다. cloud-orchestrated Work에서는 이 명령 훅이 지원되지 않습니다.
 
 Claude의 ZIP 업로드는 Claude manifest와 Claude용 훅/호스트 설정이 필요합니다. 현재 ZIP은 여전히 Codex용입니다. PORTING-CLAUDE.md를 기준으로 이식 후 .claude-plugin/plugin.json을 포함하고 Claude의 실제 validator/업로드를 확인해야 합니다.
 
