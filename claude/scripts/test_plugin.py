@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -83,6 +84,24 @@ subprocess.run(['git', 'init', '-b', 'main', str(main)], check=True, capture_out
 blocked = call('hook_entry.py', event={'cwd': str(main)})
 assert 'SHARED_PROJECT_MEMORY_LOAD_FAILED' in blocked['systemMessage'] and not (main / 'project-memory').exists()
 checks.append('main-requires-separate-approval')
+clone = fixtures / 'teammate-clone-on-main'
+clone.mkdir()
+git_id = ['-c', 'user.name=spm-test', '-c', 'user.email=spm-test@example.invalid']
+subprocess.run(['git', '-C', str(root), 'add', 'AGENTS.md', 'CLAUDE.md', 'pyproject.toml', 'project-memory'], check=True, capture_output=True)
+subprocess.run(['git', '-C', str(root), *git_id, 'commit', '-q', '-m', 'share project memory'], check=True, capture_output=True)
+committed = subprocess.run(['git', '-C', str(root), 'ls-files'], check=True, capture_output=True, text=True).stdout.splitlines()
+assert 'project-memory/MEMORY.md' in committed and not [name for name in committed if '/archive/' in name or name.startswith('.claude/')], committed
+shutil.rmtree(clone)
+subprocess.run(['git', 'clone', '-q', str(root), str(clone)], check=True, capture_output=True)
+subprocess.run(['git', '-C', str(clone), 'checkout', '-q', '-b', 'main'], check=True, capture_output=True)
+assert not (clone / 'project-memory/archive').exists() and not (clone / '.claude').exists()
+shared = call('hook_entry.py', event={'cwd': str(clone)})
+context = shared['hookSpecificOutput']['additionalContext']
+assert 'SHARED_PROJECT_MEMORY_LOADED' in context and 'SHARED_PROJECT_MEMORY_SETUP_SKIPPED' in context, context
+assert '--- MEMORY.md ---' in context and 'Current verified state' in context and 'SHARED_PROJECT_MEMORY_LOAD_FAILED' not in json.dumps(shared, ensure_ascii=False)
+assert 'SHARED_PROJECT_MEMORY_SETUP_SKIPPED' in shared['systemMessage']
+assert not (clone / '.claude').exists()
+checks.append('git-clone-on-main-loads-index-and-current')
 call('configure.py', '--apply', '--approve-main')
 assert 'SHARED_PROJECT_MEMORY_INITIALIZED' in call('hook_entry.py', event={'cwd': str(main)})['hookSpecificOutput']['additionalContext']
 checks.append('approved-main-init')

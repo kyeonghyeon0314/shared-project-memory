@@ -27,5 +27,68 @@
   "backend_upload_verified": false,
   "ui_upload_error_root_cause_confirmed": false,
   "claude_supported": false,
-  "installed": false
+  "installed": false,
+  "ci_verification": {
+    "scope": "Script tests only (test_setup.py, test_plugin.py for claude and codex). Not a plugin install, host hook trust, or real Claude/Codex session.",
+    "run": "https://github.com/kyeonghyeon0314/shared-project-memory/actions/runs/38016697984",
+    "commit": "6a966400171bb461bb52ab298ca1698a7eac617b",
+    "date_utc": "2026-10-10",
+    "matrix": {
+      "os": [
+        "ubuntu-latest",
+        "windows-latest",
+        "macos-latest"
+      ],
+      "python": [
+        "3.11",
+        "3.13"
+      ]
+    },
+    "result": "all 6 jobs passed",
+    "setup_checks": [
+      "dry-run",
+      "preserve-instructions-and-permissions",
+      "idempotent",
+      "conflicting-path-no-mutation",
+      "invalid-json-no-mutation",
+      "main-approval-gate",
+      "outside-link-no-mutation",
+      "agents-rule-loading",
+      "project-scope-conflict",
+      "incidental-mention-adapter",
+      "user-scope-conflict",
+      "prohibited-guidance",
+      "local-backup-outside-project",
+      "local-only-gitignore",
+      "no-absolute-shared-paths",
+      "private-local-backup",
+      "existing-gitignore-completed",
+      "git-check-ignore-verified",
+      "tracked-local-file-reported",
+      "config-dir-inside-project-refused",
+      "linked-config-dir-refused",
+      "negated-folder-repaired",
+      "negated-backup-file-repaired",
+      "unverified-ignore-aborts-before-copies"
+    ],
+    "plugin_checks": [
+      "default-startup-read-only",
+      "configuration-dry-run",
+      "explicit-user-opt-in",
+      "approved-init-and-settings-preserved",
+      "idempotent-startup",
+      "bounded-unicode-context-and-model-policy",
+      "disabled-init-still-loads-memory",
+      "invalid-preferences-visible",
+      "invalid-model-pair-visible",
+      "main-requires-separate-approval",
+      "git-clone-on-main-loads-index-and-current",
+      "approved-main-init",
+      "conflicting-memory-path-preserved",
+      "stricter-project-rule-preserved"
+    ],
+    "posix_only_checks": [
+      "private-local-backup"
+    ]
+  }
 }
