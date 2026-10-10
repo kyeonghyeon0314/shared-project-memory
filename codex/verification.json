@@ -1,5 +1,5 @@
 {
-  "version": "0.1.2",
+  "version": "0.1.3",
   "manual_verification_version": "0.1.1",
   "manual_verification_note": "Fields from date_kst through the end of the manual checks record the author's manual run of 0.1.1, not 0.1.2.",
   "date_kst": "2026-10-09",
@@ -98,12 +98,13 @@
     "source": "Code at merge commit 5931cf7 on main; identical to 0.1.2 except version strings, LICENSE and docs.",
     "environment": "Docker node:22-bookworm, clean user, codex-cli 0.162.1, Python 3.11.2, git 2.39.5",
     "marketplace_add_and_install": "passed (codex plugin marketplace add <repo>/codex; codex plugin add shared-project-memory@shared-project-memory-local); marketplace.json with path \".\" accepted",
-    "session_start_hook_run_by_host": "not verified: hook trust requires the interactive /hooks review; without it the hook correctly did not run. No OpenAI credentials in the test environment.",
+    "session_start_hook_run_by_host": "not verified: requires /hooks trust review on a real host",
     "live_model_received_context": "not verified",
     "not_verified": [
       "hook trust review and SessionStart execution under Codex",
       "model session",
       "Windows/macOS host install"
-    ]
+    ],
+    "session_start_hook_discovery": "0.1.2 failed: hooks/list and plugin/read returned no hooks (skills only) because Codex read the root plugin.json. 0.1.3 (root manifest removed): codex-cli 0.162.1 app-server hooks/list returns the SessionStart hook with source=plugin. Reproduced and fixed in Docker on 2026-10-10."
   }
 }

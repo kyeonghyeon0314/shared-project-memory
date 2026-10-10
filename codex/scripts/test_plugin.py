@@ -24,6 +24,11 @@ subprocess.run(['git', 'init', '-b', 'memory-test', str(root)], check=True, capt
 (root / '.claude/settings.local.json').write_text(json.dumps({'permissions': {'allow': ['Read']}}), encoding='utf-8')
 env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1', CLAUDE_CONFIG_DIR=str(fixtures / 'claude-user'))
 checks = []
+# Codex prefers a root plugin.json (Agent Plugins format) and then loads no plugin hooks; only .codex-plugin/plugin.json may exist.
+assert not (package / 'plugin.json').exists(), 'Root plugin.json hides the SessionStart hook from Codex'
+manifest = json.loads((package / '.codex-plugin/plugin.json').read_text(encoding='utf-8'))
+assert manifest['hooks'] == './hooks/hooks.json' and (package / manifest['hooks']).is_file()
+checks.append('codex-manifest-exposes-hooks')
 
 def call(script, *arguments, event=None):
     command = [sys.executable, str(package / 'scripts' / script), '--settings', str(settings), *arguments]

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.3 — 2026-10-10
+
+### 수정
+- Codex: SessionStart 훅이 발견되지 않던 문제를 고쳤습니다. 루트 `codex/plugin.json`(Agent Plugins 형식)이 있으면 Codex가 그 파일을 우선 읽고 플러그인 훅을 불러오지 않아, 0.1.2까지 Codex에서는 자동 기억 주입이 동작하지 않았습니다(스킬만 로드). 루트 manifest를 제거해 `.codex-plugin/plugin.json`의 `hooks` 선언이 쓰이도록 했습니다.
+- 회귀 검사: Codex 패키지에 루트 `plugin.json`이 없고 `.codex-plugin/plugin.json`이 훅 파일을 가리키는지 확인합니다.
+
+### 업데이트 후
+- Codex에서 플러그인을 0.1.3으로 업데이트한 뒤 `/hooks` 화면에서 shared-project-memory의 SessionStart 훅을 검토·신뢰해야 동작합니다.
+
 ## 0.1.2 — 2026-10-10
 
 ### 보안·개인정보
