@@ -46,8 +46,8 @@
   "other_os_verified": false,
   "ci_verification": {
     "scope": "Script tests only (test_setup.py, test_plugin.py for claude and codex). Not a plugin install, host hook trust, or real Claude/Codex session.",
-    "run": "https://github.com/kyeonghyeon0314/shared-project-memory/actions/runs/38016697984",
-    "commit": "6a966400171bb461bb52ab298ca1698a7eac617b",
+    "run": "https://github.com/kyeonghyeon0314/shared-project-memory/actions/runs/38028247929",
+    "commit": "29b74c42ad331eff493094de34f21916f7cb420a",
     "date_utc": "2026-10-10",
     "matrix": {
       "os": [
@@ -60,7 +60,7 @@
         "3.13"
       ]
     },
-    "result": "all 6 jobs passed",
+    "result": "all 6 jobs passed (PR #3; the push run on the same commit also passed 6/6)",
     "setup_checks": [
       "dry-run",
       "preserve-instructions-and-permissions",

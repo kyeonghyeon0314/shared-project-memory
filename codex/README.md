@@ -19,7 +19,7 @@
 
 ## ZIP 업로드와 로컬 설치의 차이
 
-이 패키지의 manifest는 `.codex-plugin/plugin.json` 하나입니다. 0.1.2까지 있던 루트 `plugin.json`(Agent Plugins 형식)은 0.1.3에서 제거했습니다. Codex 0.153·0.162는 루트 `plugin.json`이 있으면 그 파일을 우선 읽는데, 그 형식에서는 플러그인 훅을 불러오지 않아 SessionStart 훅이 `hooks/list`와 `/hooks` 화면에 나타나지 않았습니다(스킬만 로드됨). 앱의 새 플러그인 → 파일 선택 → 플러그인 추가는 계정에 비공개 플러그인을 등록하는 경로이며 로컬 marketplace 등록과 같지 않습니다. 이 경로의 업로드 성공은 검증하지 않았습니다. 어느 경로든 지원되는 로컬 Codex 세션에서 설치·훅 신뢰·실제 주입을 확인해야 합니다. cloud-orchestrated Work에서는 이 명령 훅이 지원되지 않습니다.
+이 패키지의 manifest는 `.codex-plugin/plugin.json` 하나입니다. 0.1.2까지 있던 루트 `plugin.json`(Agent Plugins 형식)은 0.1.3에서 제거했습니다. Codex 0.153·0.162는 루트 `plugin.json`이 있으면 그 파일을 우선 읽는데, 그 형식에서는 플러그인 훅을 불러오지 않아 SessionStart 훅이 `hooks/list`와 `/hooks` 화면에 나타나지 않았습니다(스킬만 로드됨). 같은 문제가 [openai/codex#39895](https://github.com/openai/codex/issues/39895)로 보고되어 있습니다. 그래서 포터블 Agent Plugins 패키지·ZIP 업로드 호환은 보장하지 않습니다. 앱의 새 플러그인 → 파일 선택 → 플러그인 추가는 계정에 비공개 플러그인을 등록하는 경로이며 로컬 marketplace 등록과 같지 않습니다. 이 경로의 업로드 성공은 검증하지 않았습니다. 어느 경로든 지원되는 로컬 Codex 세션에서 설치·훅 신뢰·실제 주입을 확인해야 합니다. cloud-orchestrated Work에서는 이 명령 훅이 지원되지 않습니다.
 
 Claude의 ZIP 업로드는 Claude manifest와 Claude용 훅/호스트 설정이 필요합니다. 현재 ZIP은 여전히 Codex용입니다. PORTING-CLAUDE.md를 기준으로 이식 후 .claude-plugin/plugin.json을 포함하고 Claude의 실제 validator/업로드를 확인해야 합니다.
 
