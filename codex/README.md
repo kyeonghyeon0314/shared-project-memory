@@ -1,4 +1,4 @@
-# Shared Project Memory — Codex 로컬 플러그인 0.1.1
+# Shared Project Memory — Codex 로컬 플러그인 0.1.2
 
 프로젝트 안의 `project-memory/`로 작업 상태·결정·인계를 공유합니다. 이 배포판은 Codex용이며 Claude 플러그인 manifest/에이전트는 포함하지 않습니다. 공용 Markdown 형식과 초기화 스크립트는 Claude 이식에 재사용할 수 있습니다.
 

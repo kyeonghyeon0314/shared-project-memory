@@ -1,6 +1,6 @@
-# Shared Project Memory — Claude Code 플러그인 0.1.1
+# Shared Project Memory — Claude Code 플러그인 0.1.2
 
-프로젝트 안의 `project-memory/`로 작업 상태·결정·인계를 공유합니다. Codex 0.1.1 패키지와 같은 기억 형식(MEMORY.md / current.md / decisions.md / topics / checkpoints / archive)과 초기화 스크립트를 사용하므로 두 도구가 같은 기억을 이어 씁니다.
+프로젝트 안의 `project-memory/`로 작업 상태·결정·인계를 공유합니다. Codex 0.1.2 패키지와 같은 기억 형식(MEMORY.md / current.md / decisions.md / topics / checkpoints / archive)과 초기화 스크립트를 사용하므로 두 도구가 같은 기억을 이어 씁니다.
 
 ## 구성
 

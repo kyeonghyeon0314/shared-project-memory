@@ -1,5 +1,7 @@
 {
-  "version": "0.1.1",
+  "version": "0.1.2",
+  "manual_verification_version": "0.1.1",
+  "manual_verification_note": "Fields from date_kst through the end of the manual checks record the author's manual run of 0.1.1, not 0.1.2.",
   "host": "claude-code",
   "date_kst": "2026-10-09",
   "environment": "Windows 11, Claude Code 2.1.280, Python 3.14 via python3 alias",
@@ -104,6 +106,19 @@
     ],
     "posix_only_checks": [
       "private-local-backup"
+    ]
+  },
+  "host_install_verification": {
+    "date_utc": "2026-10-10",
+    "source": "Code at merge commit 5931cf7 on main; identical to 0.1.2 except version strings, LICENSE and docs.",
+    "environment": "Docker node:22-bookworm, clean user, Claude Code 2.1.296, Python 3.11.2, git 2.39.5",
+    "marketplace_add_and_install": "passed (claude plugin marketplace add <repo>; claude plugin install shared-project-memory@shared-project-memory-local)",
+    "session_start_hook_run_by_host": "passed: claude -p with --include-hook-events showed SessionStart:startup hook_response exit 0; auto-init created project-memory/ incl. .gitignore",
+    "live_model_received_context": "passed: separate authenticated session (claude --plugin-dir) answered the unique marker from project-memory/current.md without tool use",
+    "not_verified": [
+      "interactive project trust dialog",
+      "helper agent model runtime",
+      "Windows/macOS host install"
     ]
   }
 }
