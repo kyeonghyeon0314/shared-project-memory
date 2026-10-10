@@ -41,7 +41,7 @@
   ],
   "session_hook_check": "claude --plugin-dir <path with space and Korean> --init-only: SessionStart exec hook ran, SHARED_PROJECT_MEMORY_LOADED injected (project path with space and Korean)",
   "known_limit": "Windows python3 App Execution Alias cannot see files under AppData\\Roaming (MSIX virtualization)",
-  "helper_model_runtime_verified": false,
+  "helper_model_runtime_verified": true,
   "installed": false,
   "other_os_verified": false,
   "ci_verification": {
@@ -119,6 +119,24 @@
       "interactive project trust dialog",
       "helper agent model runtime",
       "Windows/macOS host install"
+    ]
+  },
+  "helper_model_runtime_verification": {
+    "date_utc": "2026-10-10",
+    "source": "main e9d0691 claude/ (helper agent files unchanged since 0.1.1)",
+    "method": "claude -p --plugin-dir with --model claude-opus-5-5 for the main conversation; both helpers called by full name without a model argument; models read from the result modelUsage",
+    "memory-summarizer": {
+      "configured": "claude-sonnet-5-5 / medium",
+      "observed_model": "claude-sonnet-5-5",
+      "result": "one-line summary, marked unverified per instructions"
+    },
+    "simple-extractor": {
+      "configured": "claude-haiku-5-5 / medium",
+      "observed_model": "claude-haiku-5-5",
+      "result": "valid JSON"
+    },
+    "not_verified": [
+      "effort (not exposed in modelUsage)"
     ]
   }
 }

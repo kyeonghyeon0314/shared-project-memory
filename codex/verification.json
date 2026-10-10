@@ -119,7 +119,29 @@
       "notes": [
         "The 4,000-character context limit truncated the latest checkpoint excerpt; full memory delivery was not verified.",
         "Older user-level SPM hooks stayed disabled; the result comes from the plugin hook."
-      ]
+      ],
+      "release_tag_equivalence": "Locally verified 01e5af3 and release tag v0.1.3 (e9d0691) differ only in CHANGELOG.md, codex/README.md and verification.json; no scripts, hooks or manifests changed."
     }
+  },
+  "helper_model_runtime_verification": {
+    "date_kst": "2026-10-10",
+    "reported_by": "repository owner (manual run on their machine, Windows)",
+    "settings": "user settings.json: summarization gpt-6.1-sol/low, extraction gpt-6-luna/medium",
+    "method": "helpers spawned with explicit model and reasoning_effort, fork_turns=none, bounded packets; tools, file reads, writes and further delegation disallowed",
+    "evidence": "child session rollout JSONL (session_meta subagent.thread_spawn, turn_context model/effort, token_count), not the agent self-report",
+    "summarization": {
+      "observed_model": "gpt-6.1-sol",
+      "observed_effort": "low",
+      "result": "correct Korean summary separating verified install/injection from the unverified release diff"
+    },
+    "extraction": {
+      "observed_model": "gpt-6-luna",
+      "observed_effort": "medium",
+      "result": "requested 6-field JSON with correct boolean and number types"
+    },
+    "not_verified": [
+      "that the agent follows the skill and spawns helpers automatically in every session",
+      "backend-internal reasoning amount"
+    ]
   }
 }
