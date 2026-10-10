@@ -7,6 +7,10 @@
 - 영향: 루트 Agent Plugins manifest가 없으므로 포터블 Agent Plugins 패키지·ChatGPT ZIP 업로드 호환은 보장하지 않습니다(로컬 Codex·Claude Code 사용이 대상).
 - 회귀 검사: Codex 패키지에 루트 `plugin.json`이 없고 `.codex-plugin/plugin.json`이 훅 파일을 가리키는지 확인합니다.
 
+### 검증
+- Codex: 실제 Windows 호스트(데스크톱 런타임 0.162.0-alpha.2)에서 설치, `/hooks` 신뢰 승인, 새 세션의 기억 자동 주입을 확인했습니다. 4,000자 제한 때문에 최신 인계 발췌는 일부 잘릴 수 있습니다.
+- Claude Code: Docker에서 설치, 세션 시작 훅 실행, 모델 컨텍스트 수신을 확인했습니다(0.1.2 기준, 코드 동일).
+
 ### 업데이트 후
 - Codex에서 플러그인을 0.1.3으로 업데이트한 뒤 `/hooks` 화면에서 shared-project-memory의 SessionStart 훅을 검토·신뢰해야 동작합니다.
 
