@@ -7,21 +7,45 @@ from pathlib import Path
 
 MAX_CONTEXT_CHARS = 4000
 MAX_INPUT_CHARS = 65536
+# Per-section ceilings (whole block incl. its header line) and the minimum each keeps when the budget is tight.
 INDEX_CHARS = 600
+INDEX_MIN = 300
 CURRENT_CHARS = 2400
-CHECKPOINT_CHARS = 600
+CHECKPOINT_CHARS = 1000
+CHECKPOINT_MIN = 800
 TRUNCATION = '\n[truncated: read the full file only if needed]\n'
 
 
 def excerpt(path, memory, limit):
+    """Block of at most `limit` characters: a header line naming the file, then as much of the file as fits."""
     resolved = path.resolve(strict=True)
     if not resolved.is_relative_to(memory.resolve(strict=True)):
         raise ValueError(f'Memory file resolves outside shared memory: {path.name}')
+    header = f'\n--- {path.relative_to(memory).as_posix()} ---\n'
+    room = limit - len(header) - 1
     with path.open('r', encoding='utf-8-sig') as file:
-        text = file.read(limit + 1)
-    if len(text) > limit:
-        text = text[:limit - len(TRUNCATION)] + TRUNCATION
-    return f'\n--- {path.relative_to(memory).as_posix()} ---\n{text}\n'
+        text = file.read(max(room, 0) + 1)
+    if len(text) > room:
+        text = text[:max(room - len(TRUNCATION), 0)] + TRUNCATION
+    return header + text + '\n'
+
+
+def block_size(path, memory, ceiling):
+    """Characters the untruncated block would need, capped at ceiling."""
+    return len(excerpt(path, memory, ceiling))
+
+
+def allocate(budget, sections):
+    """Split budget over (name, needed, minimum) in priority order: minimums first, then leftovers in the same order."""
+    grant = {}
+    for name, needed, minimum in sections:
+        grant[name] = min(needed, minimum, budget)
+        budget -= grant[name]
+    for name, needed, _ in sections:
+        extra = min(needed - grant[name], budget)
+        grant[name] += extra
+        budget -= extra
+    return grant
 
 
 PROJECT_MARKERS = ('AGENTS.md', 'CLAUDE.md', 'pyproject.toml', 'package.json', 'Cargo.toml', 'go.mod', 'CMakeLists.txt')
@@ -83,7 +107,7 @@ def discover_root(cwd, auto_init):
     return nearest
 
 
-def build_context(event, host, auto_init=False, approve_main=False):
+def build_context(event, host, auto_init=False, approve_main=False, preamble=''):
     if not isinstance(event, dict) or not isinstance(event.get('cwd'), str):
         raise ValueError('Hook input must contain an absolute project cwd')
     cwd = Path(event['cwd'])
@@ -123,7 +147,7 @@ def build_context(event, host, auto_init=False, approve_main=False):
             setup_skipped = f'SHARED_PROJECT_MEMORY_SETUP_SKIPPED: {type(error).__name__}: {error}'
     if not memory.is_dir():
         raise ValueError('project-memory is not a directory')
-    text = (
+    text = preamble + (
         'SHARED_PROJECT_MEMORY_LOADED\n'
         f'Project: {root.as_posix()}\n'
         'The SessionStart hook read these bounded excerpts directly. Do not re-read them merely to load memory. '
@@ -137,11 +161,10 @@ def build_context(event, host, auto_init=False, approve_main=False):
     if initialized:
         text += 'SHARED_PROJECT_MEMORY_INITIALIZED: first-time project memory setup completed with the existing initializer.\n'
     # Claude loads the index natively only once autoMemoryDirectory points here (absent on a fresh clone or refused setup).
-    if host == 'codex' or initialized or not native_memory_linked(root):
-        text += excerpt(memory / 'MEMORY.md', memory, INDEX_CHARS)
-    else:
+    index = memory / 'MEMORY.md' if host == 'codex' or initialized or not native_memory_linked(root) else None
+    if index is None:
         text += 'Claude uses its configured native auto-memory index; this hook does not duplicate that index.\n'
-    text += excerpt(memory / 'current.md', memory, CURRENT_CHARS)
+    latest = None
     checkpoints = memory / 'checkpoints'
     if checkpoints.exists():
         if not checkpoints.resolve(strict=True).is_relative_to(memory.resolve(strict=True)):
@@ -149,7 +172,23 @@ def build_context(event, host, auto_init=False, approve_main=False):
         candidates = [path for path in checkpoints.glob('*.md') if path.is_file()]
         if candidates:
             latest = max(candidates, key=lambda path: (path.stat().st_mtime_ns, path.name))
-            text += excerpt(latest, memory, CHECKPOINT_CHARS)
+            # Named in the fixed part so the newest handoff is never silently dropped, even if its excerpt is cut.
+            text += f'Latest checkpoint: {latest.relative_to(memory).as_posix()} (read it in full if the excerpt is truncated).\n'
+    current = memory / 'current.md'
+    # One budget for everything: the newest handoff first, then the index, then current.md takes the rest.
+    sections = []
+    if latest is not None:
+        sections.append(('checkpoint', block_size(latest, memory, CHECKPOINT_CHARS), CHECKPOINT_MIN))
+    if index is not None:
+        sections.append(('index', block_size(index, memory, INDEX_CHARS), INDEX_MIN))
+    sections.append(('current', block_size(current, memory, CURRENT_CHARS), CURRENT_CHARS))
+    grant = allocate(max(MAX_CONTEXT_CHARS - len(text), 0), sections)
+    if index is not None and grant['index']:
+        text += excerpt(index, memory, grant['index'])
+    if grant['current']:
+        text += excerpt(current, memory, grant['current'])
+    if latest is not None and grant['checkpoint']:
+        text += excerpt(latest, memory, grant['checkpoint'])
     if len(text) > MAX_CONTEXT_CHARS:
         text = text[:MAX_CONTEXT_CHARS - len(TRUNCATION)] + TRUNCATION
     output = {'hookSpecificOutput': {'hookEventName': 'SessionStart', 'additionalContext': text}}

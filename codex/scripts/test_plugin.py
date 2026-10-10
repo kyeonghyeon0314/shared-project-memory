@@ -62,6 +62,15 @@ checks.append('idempotent-startup')
 text = call('hook_entry.py', event={'cwd': str(root)})['hookSpecificOutput']['additionalContext']
 assert len(text) <= 4000 and 'truncated' in text and 'gpt-6-luna' in text
 checks.append('bounded-unicode-context-and-model-policy')
+handoff = root / 'project-memory/checkpoints/20261010-120000-codex-budget.md'
+handoff.write_text('CHECKPOINT-HEAD: do not reuse the old MPC weights\n' + '세부 ' * 1500, encoding='utf-8')
+budgeted = call('hook_entry.py', event={'cwd': str(root)})['hookSpecificOutput']['additionalContext']
+assert len(budgeted) <= 4000, len(budgeted)
+assert 'Latest checkpoint: checkpoints/20261010-120000-codex-budget.md' in budgeted, 'Newest handoff not named'
+assert 'CHECKPOINT-HEAD: do not reuse the old MPC weights' in budgeted, 'Newest handoff dropped by a long current.md'
+assert 'Current verified state' in budgeted and 'SHARED_PROJECT_MEMORY_USER_POLICY' in budgeted
+handoff.unlink()
+checks.append('latest-checkpoint-survives-long-current')
 call('configure.py', '--apply', '--disable-auto-init')
 assert 'SHARED_PROJECT_MEMORY_LOADED' in call('hook_entry.py', event={'cwd': str(root)})['hookSpecificOutput']['additionalContext']
 checks.append('disabled-init-still-loads-memory')
