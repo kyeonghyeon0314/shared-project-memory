@@ -45,6 +45,28 @@ codex plugin add shared-project-memory@shared-project-memory-local
 - 같은 프로젝트의 `project-memory/`를 공유합니다. 도구를 바꾸기 전에 인계(checkpoint)를 남기세요.
 - 자동 생성 동의와 main/master 동의는 도구별 설정 파일에 따로 저장됩니다(Claude: `~/.claude/shared-project-memory/settings.json`, Codex: `~/.codex/shared-project-memory/settings.json`).
 
+## 업데이트
+
+```bash
+claude plugin marketplace update shared-project-memory-local
+claude plugin update shared-project-memory@shared-project-memory-local
+```
+
+`plugin update`는 Claude Code가 PC에 저장해 둔 마켓플레이스 사본에서 설치하므로, 첫 줄로 사본부터 갱신해야 합니다. 플러그인만 지우고 다시 설치해도 옛 사본이 남아 있어 옛 버전이 깔립니다. Codex는 클론 폴더에서 `git pull` 후 `codex plugin add shared-project-memory@shared-project-memory-local`을 다시 실행합니다.
+
+**자동 업데이트 (Claude Code).** 직접 추가한 마켓플레이스는 기본으로 자동 업데이트가 꺼져 있고, 플러그인 저장소 쪽에서 켤 수 없습니다. 한 번만 켜 두세요. `/plugin` → **Marketplaces** → `shared-project-memory-local` → **Enable auto-update**를 누르거나, `~/.claude/settings.json`의 마켓플레이스 항목에 `"autoUpdate": true`를 추가합니다.
+
+```json
+"extraKnownMarketplaces": {
+  "shared-project-memory-local": {
+    "source": { "source": "github", "repo": "kyeonghyeon0314/shared-project-memory" },
+    "autoUpdate": true
+  }
+}
+```
+
+그 뒤에는 대화형 세션 중 백그라운드에서 새 버전을 받으며, `/reload-plugins` 또는 재시작으로 적용됩니다.
+
 ## 0.1.2 이상으로 업데이트할 때
 
 - 플러그인을 업데이트한 뒤, 이미 초기화한 각 프로젝트에서 `setup_memory.py <프로젝트>`(미리보기)와 `--apply`를 한 번 실행하세요. 그래야 `project-memory/.gitignore` 보호 규칙이 적용됩니다.

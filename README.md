@@ -112,6 +112,21 @@ claude plugin marketplace update shared-project-memory-local
 claude plugin update shared-project-memory@shared-project-memory-local
 ```
 
+`plugin update` installs from Claude Code's local copy of the marketplace, so refresh it first (the first line). Reinstalling the plugin alone also keeps the old copy and gives you the old version.
+
+**Automatic updates (Claude Code).** Third-party marketplaces do not auto-update by default, and a plugin repository cannot turn it on for you. Enable it once: run `/plugin` → **Marketplaces** → `shared-project-memory-local` → **Enable auto-update**, or add `"autoUpdate": true` to the marketplace entry in `~/.claude/settings.json`:
+
+```json
+"extraKnownMarketplaces": {
+  "shared-project-memory-local": {
+    "source": { "source": "github", "repo": "kyeonghyeon0314/shared-project-memory" },
+    "autoUpdate": true
+  }
+}
+```
+
+Updates are then fetched in the background during interactive sessions; run `/reload-plugins` or restart to apply them.
+
 For Codex, pull the clone and run `codex plugin add shared-project-memory@shared-project-memory-local` again. See [CHANGELOG.md](CHANGELOG.md).
 
 ## Feedback
