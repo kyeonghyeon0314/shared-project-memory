@@ -29,6 +29,12 @@ assert not (package / 'plugin.json').exists(), 'Root plugin.json hides the Sessi
 manifest = json.loads((package / '.codex-plugin/plugin.json').read_text(encoding='utf-8'))
 assert manifest['hooks'] == './hooks/hooks.json' and (package / manifest['hooks']).is_file()
 checks.append('codex-manifest-exposes-hooks')
+# Codex falls back to the Claude marketplace at the repo root, so the root must carry a Codex marketplace pointing at codex/.
+root_marketplace = package.parent / '.agents/plugins/marketplace.json'
+if (package.parent / '.claude-plugin/marketplace.json').exists():
+    entries = json.loads(root_marketplace.read_text(encoding='utf-8'))['plugins']
+    assert [e['source'] for e in entries if e['name'] == 'shared-project-memory'] == [{'source': 'local', 'path': './codex'}], entries
+checks.append('repo-root-marketplace-targets-codex')
 
 def call(script, *arguments, event=None):
     command = [sys.executable, str(package / 'scripts' / script), '--settings', str(settings), *arguments]
