@@ -69,10 +69,11 @@ Or set up a single project explicitly: `python3 <plugin dir>/scripts/setup_memor
 ### Codex
 
 ```bash
-git clone https://github.com/kyeonghyeon0314/shared-project-memory.git
-codex plugin marketplace add "<clone path>/codex"
+codex plugin marketplace add kyeonghyeon0314/shared-project-memory
 codex plugin add shared-project-memory@shared-project-memory-local
 ```
+
+A local clone also works: `codex plugin marketplace add <clone path>` (the repository root or `<clone path>/codex`).
 
 Then open `/hooks` in Codex, review the shared-project-memory SessionStart hook and trust it — Codex does not run plugin hooks until you do. Opt-in for automatic setup works the same way with `codex/scripts/configure.py`.
 
@@ -127,7 +128,7 @@ claude plugin update shared-project-memory@shared-project-memory-local
 
 Updates are then fetched in the background during interactive sessions; run `/reload-plugins` or restart to apply them.
 
-For Codex, pull the clone and run `codex plugin add shared-project-memory@shared-project-memory-local` again. See [CHANGELOG.md](CHANGELOG.md).
+For Codex, run `codex plugin marketplace upgrade` (or `git pull` in a local clone) and then `codex plugin add shared-project-memory@shared-project-memory-local` again. If you added the Codex marketplace from the repository root or the GitHub name before this fix, Codex may have installed the Claude package (the installed `README.md` starts with "Claude Code 플러그인"); these two commands replace it with the Codex package. See [CHANGELOG.md](CHANGELOG.md).
 
 ## Feedback
 

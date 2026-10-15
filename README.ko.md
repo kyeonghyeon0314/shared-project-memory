@@ -31,12 +31,12 @@ python3 <설치된 claude 폴더>/scripts/configure.py --enable-auto-init --appl
 
 ## Codex 설치
 
-저장소를 클론한 뒤 `codex/` 폴더를 로컬 marketplace로 등록합니다.
-
 ```bash
-codex plugin marketplace add "<클론 경로>/codex"
+codex plugin marketplace add kyeonghyeon0314/shared-project-memory
 codex plugin add shared-project-memory@shared-project-memory-local
 ```
+
+로컬 클론도 됩니다: `codex plugin marketplace add <클론 경로>` (저장소 최상단 또는 `<클론 경로>/codex`).
 
 훅 신뢰와 사용자 설정은 [`codex/README.md`](codex/README.md)를 따릅니다.
 
@@ -52,7 +52,7 @@ claude plugin marketplace update shared-project-memory-local
 claude plugin update shared-project-memory@shared-project-memory-local
 ```
 
-`plugin update`는 Claude Code가 PC에 저장해 둔 마켓플레이스 사본에서 설치하므로, 첫 줄로 사본부터 갱신해야 합니다. 플러그인만 지우고 다시 설치해도 옛 사본이 남아 있어 옛 버전이 깔립니다. Codex는 클론 폴더에서 `git pull` 후 `codex plugin add shared-project-memory@shared-project-memory-local`을 다시 실행합니다.
+`plugin update`는 Claude Code가 PC에 저장해 둔 마켓플레이스 사본에서 설치하므로, 첫 줄로 사본부터 갱신해야 합니다. 플러그인만 지우고 다시 설치해도 옛 사본이 남아 있어 옛 버전이 깔립니다. Codex는 `codex plugin marketplace upgrade`(로컬 클론이면 `git pull`) 후 `codex plugin add shared-project-memory@shared-project-memory-local`을 다시 실행합니다. 이전에 저장소 최상단이나 GitHub 주소로 Codex 마켓플레이스를 등록했다면 Claude용 패키지가 설치됐을 수 있습니다(설치된 `README.md` 첫 줄이 "Claude Code 플러그인"). 위 두 명령을 실행하면 Codex용으로 바뀝니다.
 
 **자동 업데이트 (Claude Code).** 직접 추가한 마켓플레이스는 기본으로 자동 업데이트가 꺼져 있고, 플러그인 저장소 쪽에서 켤 수 없습니다. 한 번만 켜 두세요. `/plugin` → **Marketplaces** → `shared-project-memory-local` → **Enable auto-update**를 누르거나, `~/.claude/settings.json`의 마켓플레이스 항목에 `"autoUpdate": true`를 추가합니다.
 
