@@ -1,6 +1,6 @@
 {
   "name": "shared-project-memory",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Local project memory with bounded loading and explicit setup consent.",
   "skills": "./skills/",
   "hooks": "./hooks/hooks.json",

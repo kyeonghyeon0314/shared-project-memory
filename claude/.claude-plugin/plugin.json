@@ -1,6 +1,6 @@
 {
   "name": "shared-project-memory",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Local project memory with bounded SessionStart loading and explicit setup consent.",
   "author": {
     "name": "Shared Project Memory"
