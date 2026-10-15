@@ -161,7 +161,7 @@ def build_context(event, host, auto_init=False, approve_main=False, preamble='')
     if initialized:
         text += 'SHARED_PROJECT_MEMORY_INITIALIZED: first-time project memory setup completed with the existing initializer.\n'
     # Claude loads the index natively only once autoMemoryDirectory points here (absent on a fresh clone or refused setup).
-    index = memory / 'MEMORY.md' if host == 'codex' or initialized or not native_memory_linked(root) else None
+    index = memory / 'MEMORY.md' if host != 'claude' or initialized or not native_memory_linked(root) else None
     if index is None:
         text += 'Claude uses its configured native auto-memory index; this hook does not duplicate that index.\n'
     latest = None
