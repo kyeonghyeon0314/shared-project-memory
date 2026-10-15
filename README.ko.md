@@ -6,8 +6,8 @@ Codex와 Claude Code가 같은 프로젝트 기억(`project-memory/`)을 이어 
 
 | 폴더 | 대상 | 버전 |
 |---|---|---|
-| [`claude/`](claude/) | Claude Code 플러그인 (SessionStart 훅, 헬퍼 에이전트 2개, 스킬) | 0.1.4 |
-| [`codex/`](codex/) | Codex 로컬 플러그인 | 0.1.4 |
+| [`claude/`](claude/) | Claude Code 플러그인 (SessionStart 훅, 헬퍼 에이전트 2개, 스킬) | 0.1.5 |
+| [`codex/`](codex/) | Codex 로컬 플러그인 | 0.1.5 |
 
 공통 요구 사항: Python 3.11 이상, Git. 프로젝트 기억은 각 프로젝트 폴더 안에 있으므로 플러그인과 별개로 프로젝트를 따라 이동합니다.
 

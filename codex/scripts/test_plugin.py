@@ -71,6 +71,11 @@ assert 'CHECKPOINT-HEAD: do not reuse the old MPC weights' in budgeted, 'Newest 
 assert 'Current verified state' in budgeted and 'SHARED_PROJECT_MEMORY_USER_POLICY' in budgeted
 handoff.unlink()
 checks.append('latest-checkpoint-survives-long-current')
+sys.path.insert(0, str(package / 'scripts'))
+from session_start import build_context
+# Only Claude loads MEMORY.md natively; any other host (Codex, Gemini, ...) gets the index excerpt.
+assert '--- MEMORY.md ---' in build_context({'cwd': str(root)}, 'gemini')['hookSpecificOutput']['additionalContext']
+checks.append('non-claude-host-gets-index')
 call('configure.py', '--apply', '--disable-auto-init')
 assert 'SHARED_PROJECT_MEMORY_LOADED' in call('hook_entry.py', event={'cwd': str(root)})['hookSpecificOutput']['additionalContext']
 checks.append('disabled-init-still-loads-memory')

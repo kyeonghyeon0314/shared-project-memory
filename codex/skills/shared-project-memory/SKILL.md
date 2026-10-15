@@ -10,7 +10,7 @@ This package is a Codex local plugin. All project memory stays in the selected p
 ## Start or resume
 
 1. Resolve the actual user project. Do not use the generated chat folder, home, drive root, dependency folder, or another project. Follow stricter project rules.
-2. If the active project's `SHARED_PROJECT_MEMORY_LOADED` context is supplied, use its bounded excerpts without repeated reads. Otherwise read `project-memory/MEMORY.md`, `current.md`, and only the relevant latest checkpoint/topic. Read full files only when necessary.
+2. If the active project's `SHARED_PROJECT_MEMORY_LOADED` context is supplied, use its bounded excerpts without repeated reads. Otherwise read `project-memory/MEMORY.md`, `current.md`, and only the relevant latest checkpoint/topic. Read full files only when necessary. When answering from memory, say which parts were recorded as verified; do not present unverified or interpreted notes as established facts.
 3. If memory is missing, explain the small setup diff and ask the user's approval unless this user has already authorized that exact scope. Setup covers memory files, AGENTS/CLAUDE adapters, and `.claude/settings.local.json`. Existing project/code/data permissions remain in force. Automatic setup is OFF until this recipient opts in; hook trust alone is not setup consent.
 4. Preview `scripts/setup_memory.py PROJECT` with an existing Python 3.11+ interpreter. Apply only the approved scope with `--apply`; main/master requires separate `--approve-main` approval. Preserve existing memory directories and all unrelated settings. Report conflicting paths or stricter project rules; do not force changes.
 
@@ -29,6 +29,8 @@ Use the resolved `scripts/configure.py` path. It previews one user preference fi
 ## Save and hand off
 
 After meaningful changes/verification, at completion, and before switching tools, follow the project index. Create a unique `checkpoints/YYYYMMDD-HHMMSS-agent-session.md` containing purpose, actual changed files, verification conditions/results, unresolved items, next step, and sources. Mark proposals and unverified history distinctly.
+
+For meeting notes, keep goals, what each person said, your interpretation, and proposed follow-ups in separate parts. Attach the original wording or source to every number and strong claim, and compare against the source before saving.
 
 Re-read current.md before updating it. With concurrent writers, leave a separate checkpoint instead of overwriting shared state. Keep MEMORY.md concise; stable decisions go in decisions.md/topics. Do not include credentials, delete archives, mix projects, or claim a failed write succeeded. A startup hook loads memory; it does not capture every conversation or guarantee saves.
 

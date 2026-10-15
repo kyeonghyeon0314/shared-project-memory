@@ -1,5 +1,5 @@
 {
-  "version": "0.1.4",
+  "version": "0.1.5",
   "manual_verification_version": "0.1.1",
   "manual_verification_note": "Fields from date_kst through the end of the manual checks record the author's manual run of 0.1.1, not 0.1.2.",
   "date_kst": "2026-10-09",
